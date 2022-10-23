@@ -119,7 +119,7 @@ namespace rdx
 
 	class Reaction_Obj{
 	public:
-		int mols = 1;
+		float mols = 1;
 		Reaction_Obj(){}
 		virtual std::string reaction_obj_type() = 0;
 		virtual int valence() = 0;
@@ -815,12 +815,12 @@ namespace rdx
 
 			gauss_jordan_reduction:
 
-			for(int i = 0; i < num_of_equations; i++){
-				for(int j = 0; j <num_of_coeficents+1; j++){
-					std::cout << matrix[i][j] << "  ";
+		/*	for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
+				for(int j = 0; j < num_of_coeficents+1; j++){
+					std::cout << ((j == num_of_coeficents)? "| " : "") << matrix[i][j] << "  ";
 				}
 				std::cout << "\n\n";
-			}std::cout << "\n----------------------\n";
+			}std::cout << "\n----------------------\n";*/
 
 			//convert the coeficients under the diagonal into 0
 			for(int i = 0; i < num_of_coeficents; i++){
@@ -853,7 +853,7 @@ namespace rdx
 						//start reduction operation
 						float oposite_coef = -matrix[j][i];
 						for(int n = 0; n < (num_of_coeficents+1); n++){
-							matrix[j][n] = matrix[j][n] * matrix[best_scalonated_row][i] +matrix[best_scalonated_row][n] * oposite_coef; //reducing
+							matrix[j][n] = matrix[j][n] * matrix[best_scalonated_row][i] + matrix[best_scalonated_row][n] * oposite_coef; //reducing
 						}
 						std::cin.get();
 						goto gauss_jordan_reduction;
@@ -892,7 +892,7 @@ namespace rdx
 						//start reduction operation
 						float oposite_coef = -matrix[j][i];
 						for(int n = 0; n < (num_of_coeficents+1); n++){
-							matrix[j][n] = matrix[j][n] * matrix[best_scalonated_row][i] +matrix[best_scalonated_row][n] * oposite_coef; //reducing
+							matrix[j][n] = matrix[j][n] * matrix[best_scalonated_row][i] + matrix[best_scalonated_row][n] * oposite_coef; //reducing
 						}
 						std::cin.get();
 						goto gauss_jordan_reduction;
@@ -909,14 +909,50 @@ namespace rdx
 				
 			}
 
-			for(int i = 0; i < num_of_equations; i++){
+		/*	for(int i = 0; i < num_of_equations; i++){ // SHOW MATRIX STATE
 				for(int j = 0; j <num_of_coeficents+1; j++){
-					std::cout << matrix[i][j] << "  ";
+					std::cout << ((j == num_of_coeficents)? "| " : "") << matrix[i][j] << "  ";
 				}
 				std::cout << "\n\n";
-			}std::cout << "\n----------------------\n";
+			}std::cout << "\n----------------------\n";*/
 
-			
+
+			int lower_mol_value = 1;
+
+			setting_mols: std::cout << lower_mol_value << "\n";
+
+			(reactants[0])->mols = lower_mol_value;
+
+			int coeff_index = 0;
+			for(int i = 0; i < reactants.size(); i++){
+
+				if(i == 0) continue; // is a setted value
+				
+				Reaction_Obj* reactant = reactants[i];
+				float setted_reactant_mols = reactant->mols * matrix[coeff_index][num_of_coeficents] * lower_mol_value;
+				
+				if(setted_reactant_mols - (int)(setted_reactant_mols) != 0){//if mols are not integers repeat mol setting
+					lower_mol_value++;
+					goto setting_mols;
+				}
+		
+				reactant->mols *= setted_reactant_mols;
+
+				coeff_index++;
+			}
+			for(Reaction_Obj* product: products){
+
+				float setted_product_mols = product->mols * matrix[coeff_index][num_of_coeficents] * lower_mol_value;
+
+				if(setted_product_mols - (int)(setted_product_mols) != 0){//if mols are not integers repeat mol setting
+					lower_mol_value++;
+					goto setting_mols;
+				}
+
+				product->mols *= setted_product_mols;
+
+				coeff_index++;
+			}
 		}
 	};
 
@@ -971,7 +1007,7 @@ namespace rdx
 			}
 		}
 
-		/*void valance_semireactions(){
+	/*	void valance_semireactions(){
 	
 			for(Reaction sr : semireactions)
 				sr.valance(); 
