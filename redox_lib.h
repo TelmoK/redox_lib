@@ -698,37 +698,99 @@ namespace rdx
 			//the reaction will be valanced using the algebraic method
 			//for solving the linear equations this function applies the Gauss elimination and Gauss Jordan method
 
-		/*	int num_of_coeficents = 4;
-			int num_of_equations = 4;*/
-		/*	int num_of_coeficents = 3;
-			int num_of_equations = 3;*/
-			int num_of_coeficents = 5;
-			int num_of_equations = 5;
+			std::vector<Element> present_elements;
+
+			for(Reaction_Obj* reactObj : reactants){
+
+				if(reactObj->reaction_obj_type() == "compound")
+				{
+					Compound current_compound = *(dynamic_cast<Compound*>(reactObj));
+					
+					for(Element el : current_compound.elements){
+						bool f = false;
+
+						for(Element pr_el : present_elements)
+							if(el.nomenclature == pr_el.nomenclature){
+								f = true;
+								break;
+							}
+						if(f == false) present_elements.push_back(el);
+					}
+				}
+				
+			}
+
+			// getting all equations (Ej: a + 2b = 0)
+
+			float** first_matrix = new float*[ present_elements.size() ];// the number of ecuations corresponds to de number of the unrepited different elements
+			for(int i = 0; i < present_elements.size(); i++)
+				first_matrix[i] = new float[ reactants.size() + products.size() ]; //a b c ... coefficents depend on de number of compounds in the reaction
+
+			for(int i = 0; i < present_elements.size(); i++){
+
+
+				for(int j = 0; j < reactants.size(); j++){
+
+					int current_compound_mols = (reactants[j])->mols;
+					int element_mols_count = 0;
+
+					Reaction_Obj* reactObj = reactants[j];
+
+					if(reactObj->reaction_obj_type() == "compound")
+					{
+						Compound current_compound = *(dynamic_cast<Compound*>(reactObj));
+
+						for(Element pr_el : current_compound.elements)
+							if(pr_el.nomenclature == (present_elements[i]).nomenclature){
+								element_mols_count += pr_el.mols;
+							}
+						
+					}
+
+					first_matrix[i][j] = element_mols_count * current_compound_mols;
+				}
+				for(int j = 0; j < products.size(); j++){
+
+					int current_compound_mols = (products[j])->mols;
+					int element_mols_count = 0;
+
+					Reaction_Obj* reactObj = products[j];
+
+					if(reactObj->reaction_obj_type() == "compound")
+					{
+						Compound current_compound = *(dynamic_cast<Compound*>(reactObj));
+
+						for(Element pr_el : current_compound.elements)
+							if(pr_el.nomenclature == (present_elements[i]).nomenclature){
+								element_mols_count -= pr_el.mols;
+							}
+						
+					}
+
+					first_matrix[i][j + reactants.size()] = element_mols_count * current_compound_mols;
+				}
+			}
+
+			//assuming coefficent 'a' is 1 we reduce the number of coefficents and set an independent term column
+			//we create a second matrix for solving the rest of unknowns
+			int num_of_coeficents = products.size() + reactants.size();
+			int num_of_equations = present_elements.size();
 
 			float** matrix = new float*[ num_of_equations ];
 			for(int i = 0; i < num_of_equations; i++)
 				matrix[i] = new float[ num_of_coeficents+1 ];
 
-		/*	matrix[0][0] = 0;   matrix[0][1] =  0;   matrix[0][2] = 1;   matrix[0][3] =  0;   matrix[0][4] = 1;
-			matrix[1][0] = 0;   matrix[1][1] =  0;   matrix[1][2] = 2;   matrix[1][3] =  1;   matrix[1][4] = 3;
-			matrix[2][0] = 1;   matrix[2][1] =  0;   matrix[2][2] = 0;   matrix[2][3] = -2;   matrix[2][4] = 0;
-			matrix[3][0] = 1;   matrix[3][1] = -1;   matrix[3][2] = 0;   matrix[3][3] =  0;   matrix[3][4] = 0;*/
-		/*	matrix[0][0] = 1;   matrix[0][1] =  -2;   matrix[0][2] = 3;   matrix[0][3] =  11;
-			matrix[1][0] = 4;   matrix[1][1] =  1;   matrix[1][2] = -1;   matrix[1][3] =  4;
-			matrix[2][0] = 2;   matrix[2][1] =  -1;   matrix[2][2] = 3;   matrix[2][3] = 10;*/
-			matrix[0][0] = 0.0; matrix[0][1] = 0.0; matrix[0][2] = 0.0; matrix[0][3] =  1.0; matrix[0][4] = 0.0; matrix[0][5] = 2.0; 
-			matrix[1][0] = 0.0; matrix[1][1] = 0.0; matrix[1][2] = 1.0; matrix[1][3] =  0.0; matrix[1][4] = 0.0; matrix[1][5] = 5.0; 
-			matrix[2][0] = 1.0; matrix[2][1] = 2.0; matrix[2][2] = -2.0; matrix[2][3] = -3.0; matrix[2][4] = 0.0; matrix[2][5] = 0.0;
-			matrix[3][0] = 1.0; matrix[3][1] = 0.0; matrix[3][2] = 0.0; matrix[3][3] =  0.0; matrix[3][4] = -1.0; matrix[3][5] = 0.0; 
-			matrix[4][0] = 3.0; matrix[4][1] = 1.0; matrix[4][2] = -4.0; matrix[4][3] = -4.0; matrix[4][4] = -1.0; matrix[4][5] = 0.0;
-
 			for(int i = 0; i < num_of_equations; i++){
-				for(int j = 0; j <num_of_coeficents+1; j++){
-					std::cout << matrix[i][j] << "  ";
+				for(int j = 0; j < num_of_coeficents-1; j++){
+					matrix[i][j] = first_matrix[i][j+1];
 				}
-				std::cout << "\n\n";
-			}std::cout << "\n----------------------\n";
-			//ensure that all the diagonal values are != 0
+				matrix[i][num_of_coeficents-1] = -first_matrix[i][0];
+			}
+			num_of_coeficents--;
+
+
+			
+			//First ensure that all the diagonal values are != 0
 			for(int i = 0; i < num_of_equations; i++){
 
 				if(matrix[i][i] != 0) continue;
@@ -853,6 +915,8 @@ namespace rdx
 				}
 				std::cout << "\n\n";
 			}std::cout << "\n----------------------\n";
+
+			
 		}
 	};
 
