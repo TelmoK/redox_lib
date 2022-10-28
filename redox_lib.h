@@ -122,7 +122,7 @@ namespace rdx
 		float mols = 1;
 		Reaction_Obj(){}
 		virtual std::string reaction_obj_type() = 0;
-		virtual int valence() = 0;
+		virtual float valence() = 0;
 		virtual std::string nomenclature() = 0;
 	};
 
@@ -227,7 +227,7 @@ namespace rdx
 				this->type = "single element";
 				(elements[0]).current_ox_n = 0; // all single elements have a valence of 0
 			}
-			else if(elements.size() == 2) //BINARY COMPOUNDS  //QUEDA REVISAR QUE EL NÚMERO DE OXIDACIÓN PERTENEZCA AL ELEMENTO
+			else if(elements.size() == 2) //BINARY COMPOUNDS 
 			{
 				//	Oxides
 				if((elements[0]).type == "metal" && (elements[1]).type == "oxygen"){
@@ -521,28 +521,36 @@ namespace rdx
 
 		std::string nomenclature() override{
 
-			std::string nm = (this->mols > 1)? std::to_string(this->mols) : "";
+			std::string nm;
+
+			if(this->mols - (int)this->mols == 0) nm = (this->mols > 1)? std::to_string((int)this->mols) : "";
+			else nm = (this->mols > 1)? std::to_string(this->mols) : "";
 
 			for(Element element : elements){
 				nm += element.nomenclature;
-				if(element.mols > 1) nm += std::to_string(element.mols);
+				if(element.mols > 1){
+					if(element.mols - (int)element.mols == 0) nm += std::to_string((int)(element.mols));
+					else nm += std::to_string(element.mols);
+				}
 			}
 
 			if(this->valence() != 0){
 
 				if(valence() > 0){
-					nm += "+" + ( (valence() == 1)? "" : std::to_string(valence()) );
+					if(valence() - (int)valence() == 0) nm += "+" + ( (valence() == 1)? "" : std::to_string( (int)valence() ));
+					else nm += "+" + ( (valence() == 1)? "" : std::to_string(valence()) );
 				}
 				else if(valence() < 0){
-					nm += "-" + ( (valence() == -1)? "" : std::to_string( valence()*(-1) ) );
+					if(valence() - (int)valence() == 0) nm += "-" + ( (valence() == -1)? "" : std::to_string( (int)valence() * (-1) ));
+					else nm += "-" + ( (valence() == -1)? "" : std::to_string( valence()*(-1) ) );
 				}
 			}
 
 			return nm;
 		}
 
-		int valence() override{
-			int val = 0;
+		float valence() override{
+			float val = 0;
 			for(Element element : elements)
 				val += element.current_ox_n * element.mols;
 			
@@ -648,10 +656,11 @@ namespace rdx
 		}
 
 		std::string nomenclature() override{
-			return std::to_string(this->mols) + "e-";
+			if(this->mols - (int)this->mols == 0) return std::to_string((int)this->mols) + "e-";
+			else return std::to_string(this->mols) + "e-";
 		}
 
-		int valence() override{
+		float valence() override{
 			return -(this->mols);
 		}
 	};
@@ -693,7 +702,7 @@ namespace rdx
 			}*/
 		}
 
-		void valance(){
+		void valance(std::vector<std::string> specif_els_to_valance = {}, bool exclude_specif_els = false){
 
 			//the reaction will be valanced using the algebraic method
 			//for solving the linear equations this function applies the Gauss elimination and Gauss Jordan method
@@ -710,7 +719,11 @@ namespace rdx
 						bool f = false;
 
 						for(Element pr_el : present_elements)
-							if(el.nomenclature == pr_el.nomenclature){
+							if(el.nomenclature == pr_el.nomenclature 
+								&& (specif_els_to_valance.size() != 0 && (
+									(exclude_specif_els == false && std::find(specif_els_to_valance.begin(), specif_els_to_valance.end(), el.nomenclature) != specif_els_to_valance.end())
+									|| (exclude_specif_els == true && std::find(specif_els_to_valance.begin(), specif_els_to_valance.end(), el.nomenclature) == specif_els_to_valance.end()))))
+							{
 								f = true;
 								break;
 							}
@@ -815,12 +828,12 @@ namespace rdx
 
 			gauss_jordan_reduction:
 
-		/*	for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
+			for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
 				for(int j = 0; j < num_of_coeficents+1; j++){
 					std::cout << ((j == num_of_coeficents)? "| " : "") << matrix[i][j] << "  ";
 				}
 				std::cout << "\n\n";
-			}std::cout << "\n----------------------\n";*/
+			}std::cout << "\n----------------------\n";
 
 			//convert the coeficients under the diagonal into 0
 			for(int i = 0; i < num_of_coeficents; i++){
@@ -909,12 +922,12 @@ namespace rdx
 				
 			}
 
-		/*	for(int i = 0; i < num_of_equations; i++){ // SHOW MATRIX STATE
+			for(int i = 0; i < num_of_equations; i++){ // SHOW MATRIX STATE
 				for(int j = 0; j <num_of_coeficents+1; j++){
 					std::cout << ((j == num_of_coeficents)? "| " : "") << matrix[i][j] << "  ";
 				}
 				std::cout << "\n\n";
-			}std::cout << "\n----------------------\n";*/
+			}std::cout << "\n----------------------\n";
 
 
 			int lower_mol_value = 1;
@@ -963,6 +976,8 @@ namespace rdx
 
 	public:
 
+		std::string medium;
+
 		Redox_Valancer(){}
 
 		Redox_Valancer(Reaction _reaction) : raw_reaction(_reaction){}
@@ -991,6 +1006,11 @@ namespace rdx
 									Reaction new_semireaction(new_semireaction_reactants, new_semireaction_products);
 
 									semireactions.push_back(new_semireaction);
+									
+									medium = "base";
+									if(reactant.type == "hydracid" || reactant.type == "hydride" || reactant.type == "oxoacid")
+										medium = "acid";
+										
 								}
 							}
 						}
@@ -1007,12 +1027,144 @@ namespace rdx
 			}
 		}
 
-	/*	void valance_semireactions(){
+		void valance_semireactions(){
 	
+			//non oxygen elements valance
 			for(Reaction sr : semireactions)
-				sr.valance(); 
+				sr.valance({"O"},true); 
 			
-			//add H2Os
-		}*/
+			
+			if(medium == "acid"){// ADD H2Os AND H+
+				
+				for(Reaction& semireaction : semireactions){
+
+					int num_of_oxygen_R = 0;
+
+					for(Reaction_Obj* reactant : semireaction.reactants){//counting the oxygen in the reactives
+						if(reactant->reaction_obj_type() == "compound"){
+
+							Compound compound = *(dynamic_cast<Compound*>(reactant));
+
+							for(int i = 0; i < compound.elements.size(); i++){
+								if((compound.elements[i]).nomenclature == "O")
+									num_of_oxygen_R += (compound.elements[i]).mols * compound.mols;
+							}
+						}
+					}
+
+					int num_of_oxygen_P = 0;
+
+					for(Reaction_Obj* product : semireaction.products){//counting the oxygen in the products
+						if(product->reaction_obj_type() == "compound"){
+
+							Compound compound = *(dynamic_cast<Compound*>(product));
+
+							for(int i = 0; i < compound.elements.size(); i++){
+								if((compound.elements[i]).nomenclature == "O")
+									num_of_oxygen_P += (compound.elements[i]).mols * compound.mols;
+							}
+						}
+					}
+					
+					//oxigen valancing
+					if(num_of_oxygen_R > num_of_oxygen_P && num_of_oxygen_R > 0){
+
+						std::string waters = std::to_string(num_of_oxygen_R - num_of_oxygen_P)+"H2O";
+						semireaction.products.push_back( new Compound(waters) );
+
+						//hydrogen valancing
+						Compound* H = new Compound({getPTElement("H")});
+						H->mols = (num_of_oxygen_R - num_of_oxygen_P) * 2;
+						semireaction.reactants.push_back( H );
+					}
+					else if(num_of_oxygen_R < num_of_oxygen_P && num_of_oxygen_P > 0){
+
+						std::string waters = std::to_string(num_of_oxygen_P - num_of_oxygen_R)+"H2O";
+						semireaction.reactants.push_back( new Compound(waters) );
+
+						//hydrogen valancing
+						Compound* H = new Compound({getPTElement("H")});
+						H->mols = (num_of_oxygen_P - num_of_oxygen_R) * 2;
+						semireaction.products.push_back( H );
+					}
+					
+				}
+			}
+			else if(medium == "base"){// ADD H2Os AND OH-
+				
+				for(Reaction& semireaction : semireactions){
+
+					int num_of_oxygen_R = 0;
+
+					for(Reaction_Obj* reactant : semireaction.reactants){//counting the oxygen in the reactives
+						if(reactant->reaction_obj_type() == "compound"){
+
+							Compound compound = *(dynamic_cast<Compound*>(reactant));
+
+							for(int i = 0; i < compound.elements.size(); i++){
+								if((compound.elements[i]).nomenclature == "O")
+									num_of_oxygen_R += (compound.elements[i]).mols * compound.mols;
+							}
+						}
+					}
+
+					int num_of_oxygen_P = 0;
+
+					for(Reaction_Obj* product : semireaction.products){//counting the oxygen in the products
+						if(product->reaction_obj_type() == "compound"){
+
+							Compound compound = *(dynamic_cast<Compound*>(product));
+
+							for(int i = 0; i < compound.elements.size(); i++){
+								if((compound.elements[i]).nomenclature == "O")
+									num_of_oxygen_P += (compound.elements[i]).mols * compound.mols;
+							}
+						}
+					}
+					
+					//oxigen valancing
+					if(num_of_oxygen_R > num_of_oxygen_P && num_of_oxygen_R > 0){
+
+						std::string waters = std::to_string(num_of_oxygen_R - num_of_oxygen_P)+"H2O";
+						semireaction.reactants.push_back( new Compound(waters) );
+
+						//hydrogen valancing
+						Compound* OH = new Compound("OH");
+						OH->mols = (num_of_oxygen_R - num_of_oxygen_P) * 2;
+						semireaction.products.push_back( OH );
+					}
+					else if(num_of_oxygen_R < num_of_oxygen_P && num_of_oxygen_P > 0){
+
+						std::string waters = std::to_string(num_of_oxygen_P - num_of_oxygen_R)+"H2O";
+						semireaction.products.push_back( new Compound(waters) );
+
+						//hydrogen valancing
+						Compound* OH = new Compound("OH");
+						OH->mols = (num_of_oxygen_P - num_of_oxygen_R) * 2;
+						semireaction.reactants.push_back( OH );
+					}
+					
+				}
+			}
+
+			//electron compensation
+			for(Reaction& semireaction : semireactions){
+
+				float total_reactant_valence = 0;
+				float total_product_valence = 0;
+
+				for(Reaction_Obj* reactant : semireaction.reactants)
+					total_reactant_valence += reactant->valence();
+
+				for(Reaction_Obj* product : semireaction.products)
+					total_product_valence += product->valence();
+
+				if(total_reactant_valence - total_product_valence < 0)
+					semireaction.products.push_back( new Electron( -(total_reactant_valence - total_product_valence) ) );
+				else if(total_reactant_valence - total_product_valence > 0)
+					semireaction.reactants.push_back( new Electron( (total_reactant_valence - total_product_valence) ) );
+			}
+			
+		}
 	};
 }
