@@ -499,7 +499,7 @@ namespace rdx
 				for(Element this_compound_element : elements){
 
 					if(compound_element.nomenclature == this_compound_element.nomenclature 
-						&& compound_element.mols * compound.mols == this_compound_element.mols * this->mols){
+						&& compound_element.mols == this_compound_element.mols){
 
 						found = true;
 						break;
@@ -509,6 +509,12 @@ namespace rdx
 			}
 
 			return equal;
+		}
+
+		float operator%(Compound compound){
+
+			if(*this == compound) return this->mols / compound.mols;
+			else return -1;
 		}
 
 		void showCompoundInfo(){
@@ -663,6 +669,10 @@ namespace rdx
 		float valence() override{
 			return -(this->mols);
 		}
+
+		bool operator==(Electron electron){
+			return (this->mols == electron.mols)? true : false;
+		}
 	};
 
 	class Reaction{
@@ -694,12 +704,32 @@ namespace rdx
 
 		Reaction operator+(Reaction reaction){
 
-/*			std::vector<Reaction_Obj*> final_reactants;
-			for(Reaction_Obj* reactant : reaction.reactants){
-				for(Reaction_Obj* this_products : this->products){
+		/*	std::vector<Reaction_Obj*> final_reactants;
+			for(int i = 0; i < reaction.reactants.size(); i++){
+				for(int j = 0; j < this->products.size(); j++){
+					
+					Reaction_Obj* reactant = reaction.reactants[i];
+					Reaction_Obj* local_product = this->products[j];
+std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_obj_type() << std::endl;
+					if(reactant->reaction_obj_type() == "electron" && local_product->reaction_obj_type() == "electron"){
 
+						if(reactant->mols < local_product->mols){printf("pr");
+							local_product->mols -= reactant->mols;
+							reaction.reactants.erase(reaction.reactants.begin()+i);
+						}
+						else if(reactant->mols > local_product->mols){printf("re");
+							reactant->mols -= local_product->mols;
+							reaction.reactants.erase(this->products.begin()+j);
+							final_reactants.push_back(reactant);
+						}
+						else if(reactant->mols == local_product->mols){printf("both");
+							reaction.reactants.erase(reaction.reactants.begin()+i);
+							reaction.reactants.erase(this->products.begin()+j);
+						}
+					}
 				}
-			}*/
+			}
+			return Reaction(final_reactants,products);*/
 		}
 
 		void valance(std::vector<std::string> specif_els_to_valance = {}, bool exclude_specif_els = false){
@@ -707,6 +737,7 @@ namespace rdx
 			//the reaction will be valanced using the algebraic method
 			//for solving the linear equations this function applies the Gauss elimination and Gauss Jordan method
 
+			//differenciating the present elements
 			std::vector<Element> present_elements;
 
 			for(Reaction_Obj* reactObj : reactants){
@@ -826,7 +857,7 @@ namespace rdx
 				}
 			}
 
-			gauss_jordan_reduction:
+			gauss_jordan_elimination:
 
 			for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
 				for(int j = 0; j < num_of_coeficents+1; j++){
@@ -863,13 +894,13 @@ namespace rdx
 							}
 						}
 
-						//start reduction operation
+						//start elimination operation
 						float oposite_coef = -matrix[j][i];
 						for(int n = 0; n < (num_of_coeficents+1); n++){
 							matrix[j][n] = matrix[j][n] * matrix[best_scalonated_row][i] + matrix[best_scalonated_row][n] * oposite_coef; //reducing
 						}
 						std::cin.get();
-						goto gauss_jordan_reduction;
+						goto gauss_jordan_elimination;
 					}
 				}
 			}
@@ -902,13 +933,13 @@ namespace rdx
 							}
 						}
 
-						//start reduction operation
+						//start elimination operation
 						float oposite_coef = -matrix[j][i];
 						for(int n = 0; n < (num_of_coeficents+1); n++){
 							matrix[j][n] = matrix[j][n] * matrix[best_scalonated_row][i] + matrix[best_scalonated_row][n] * oposite_coef; //reducing
 						}
 						std::cin.get();
-						goto gauss_jordan_reduction;
+						goto gauss_jordan_elimination;
 					}
 				}
 			}
@@ -917,7 +948,7 @@ namespace rdx
 			for(int i = 0; i < num_of_equations; i++){
 
 				float index_factor = matrix[i][i];
-				for(int j = 0; j <num_of_coeficents+1; j++)
+				for(int j = 0; j < num_of_coeficents+1; j++)
 					matrix[i][j] = matrix[i][j] / index_factor;
 				
 			}
@@ -973,6 +1004,10 @@ namespace rdx
 
 		Reaction raw_reaction;
 		std::vector<Reaction> semireactions; 
+		float ox_smr_electron_mols = 0;
+		float red_smr_electron_mols = 0;
+		Reaction* oxidation_semireaction = new Reaction();
+		Reaction* reduction_semireaction = new Reaction();
 
 	public:
 
@@ -1019,7 +1054,7 @@ namespace rdx
 			}
 		}
 
-		void showSeireactions(){
+		void showSemireactions(){
 
 			for(Reaction sr : semireactions){
 				sr.showReaction(); 
@@ -1027,8 +1062,56 @@ namespace rdx
 			}
 		}
 
+		std::vector<Reaction> oxidation_semireactions(){
+
+			std::vector<Reaction> ox_semireactions;
+			for(Reaction& semireaction : semireactions){
+
+				for(Reaction_Obj* R : semireaction.reactants){
+					for(Reaction_Obj* P : semireaction.products){
+
+						Compound reactant = *(dynamic_cast<Compound*>(R));
+						Compound product = *(dynamic_cast<Compound*>(P));
+
+						for(Element reactant_element : reactant.elements)
+							for(Element product_element : product.elements)
+								if(reactant_element.current_ox_n > product_element.current_ox_n)//if gained electrons
+									ox_semireactions.push_back(semireaction);
+					}
+				}
+			}
+			return ox_semireactions;
+		}
+
+		std::vector<Reaction> reduction_semireactions(){
+
+			std::vector<Reaction> red_semireactions;
+			for(Reaction& semireaction : semireactions){
+
+				for(Reaction_Obj* R : semireaction.reactants){
+					for(Reaction_Obj* P : semireaction.products){
+
+						Compound reactant = *(dynamic_cast<Compound*>(R));
+						Compound product = *(dynamic_cast<Compound*>(P));
+
+						for(Element reactant_element : reactant.elements)
+							for(Element product_element : product.elements)
+								if(reactant_element.current_ox_n < product_element.current_ox_n)//if lost electrons
+									red_semireactions.push_back(semireaction);
+					}
+				}
+			}
+			return red_semireactions;
+		}
+
 		void valance_semireactions(){
 	
+
+			//ensure there are only 2 semireactions joining the all the oxidation semireactions and all the reduction semireactions
+
+
+
+
 			//non oxygen elements valance
 			for(Reaction sr : semireactions)
 				sr.valance({"O"},true); 
@@ -1148,6 +1231,7 @@ namespace rdx
 			}
 
 			//electron compensation
+
 			for(Reaction& semireaction : semireactions){
 
 				float total_reactant_valence = 0;
@@ -1159,12 +1243,85 @@ namespace rdx
 				for(Reaction_Obj* product : semireaction.products)
 					total_product_valence += product->valence();
 
-				if(total_reactant_valence - total_product_valence < 0)
-					semireaction.products.push_back( new Electron( -(total_reactant_valence - total_product_valence) ) );
-				else if(total_reactant_valence - total_product_valence > 0)
-					semireaction.reactants.push_back( new Electron( (total_reactant_valence - total_product_valence) ) );
+				if(total_reactant_valence - total_product_valence < 0){// reduction
+					
+					reduction_semireaction = &semireaction;
+					red_smr_electron_mols = -(total_reactant_valence - total_product_valence);
+				}
+				else if(total_reactant_valence - total_product_valence > 0){// oxidation
+					
+					oxidation_semireaction = &semireaction;
+					ox_smr_electron_mols = total_reactant_valence - total_product_valence;
+				}
+			}
+
+			if(ox_smr_electron_mols == 0 && red_smr_electron_mols == 0){
+				reduction_semireaction->products.push_back( new Electron( red_smr_electron_mols ) );
+				oxidation_semireaction->reactants.push_back( new Electron( ox_smr_electron_mols ) );
 			}
 			
+		}
+
+		void mix_semireactions(){
+
+			//electron equalazing
+			*reduction_semireaction *= ox_smr_electron_mols;   reduction_semireaction->showReaction(); printf("\n");
+			*oxidation_semireaction *= red_smr_electron_mols;  oxidation_semireaction->showReaction(); printf("\n--------------\n");
+			
+			Reaction new_equivalent_reaction;
+
+			for(Reaction semireaction : semireactions){
+
+				new_equivalent_reaction.reactants.insert( new_equivalent_reaction.reactants.end(), semireaction.reactants.begin(), semireaction.reactants.end());
+				new_equivalent_reaction.products.insert(  new_equivalent_reaction.products.end(), semireaction.products.begin(),  semireaction.products.end());
+			}
+
+			//reducing the reaction
+
+			for(int i = 0; i < new_equivalent_reaction.reactants.size(); i++){
+				for(int j = 0; j < new_equivalent_reaction.products.size(); j++){
+
+					Reaction_Obj* reactant = new_equivalent_reaction.reactants[i];
+					Reaction_Obj* product = new_equivalent_reaction.products[j];
+
+					if(reactant->reaction_obj_type() == "compound" && product->reaction_obj_type() == "compound"/* && reactant == product*/){
+printf("COMPOUNDS");
+						if(reactant->mols > product->mols){printf("mas reactant");
+							reactant->mols -= product->mols;
+							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+						}
+						if(reactant->mols < product->mols){printf("mas producto");
+							product->mols -= reactant->mols;
+							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+							break;
+						}
+						if(reactant->mols == product->mols){printf("igual");
+							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+							break;
+						}
+					}
+					else if(reactant->reaction_obj_type() == "electron" && product->reaction_obj_type() == "electron"){
+printf("ELECTRONES");
+						if(reactant->mols > product->mols){printf("mas reactant e-");
+							reactant->mols -= product->mols;
+							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+						}
+						if(reactant->mols < product->mols){printf("mas producto e-");
+							product->mols -= reactant->mols;
+							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+							break;
+						}
+						if(reactant == product){printf("igual e-");
+							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+							break;
+						}
+					}
+				}
+			}
+
+			new_equivalent_reaction.showReaction();
 		}
 	};
 }
