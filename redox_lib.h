@@ -490,6 +490,8 @@ namespace rdx
 
 		bool operator==(Compound compound){
 
+			if(this->elements.size() != compound.elements.size()) return false;
+
 			bool equal = true;
 
 			for(Element compound_element : compound.elements){
@@ -1018,6 +1020,8 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 		Redox_Valancer(Reaction _reaction) : raw_reaction(_reaction){}
 
 		void set_semireactions(){
+			
+			medium = "base";
 
 			for(Reaction_Obj* R : raw_reaction.reactants){
 				for(Reaction_Obj* P : raw_reaction.products){
@@ -1028,7 +1032,10 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 						reactant.set_valences();
 						Compound product = *(dynamic_cast<Compound*>(P));
 						product.set_valences();
-						
+
+						if(reactant.type == "hydracid" || reactant.type == "hydride" || reactant.type == "oxoacid")
+							medium = "acid";
+
 						for(Element reactant_element : reactant.elements){
 							for(Element product_element : product.elements){
 								
@@ -1041,11 +1048,6 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 									Reaction new_semireaction(new_semireaction_reactants, new_semireaction_products);
 
 									semireactions.push_back(new_semireaction);
-									
-									medium = "base";
-									if(reactant.type == "hydracid" || reactant.type == "hydride" || reactant.type == "oxoacid")
-										medium = "acid";
-										
 								}
 							}
 						}
@@ -1230,7 +1232,7 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 				}
 			}
 
-			//electron compensation
+			//electron valancing
 
 			for(Reaction& semireaction : semireactions){
 
@@ -1255,7 +1257,7 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 				}
 			}
 
-			if(ox_smr_electron_mols == 0 && red_smr_electron_mols == 0){
+			if(ox_smr_electron_mols != 0 && red_smr_electron_mols != 0){
 				reduction_semireaction->products.push_back( new Electron( red_smr_electron_mols ) );
 				oxidation_semireaction->reactants.push_back( new Electron( ox_smr_electron_mols ) );
 			}
@@ -1265,8 +1267,18 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 		void mix_semireactions(){
 
 			//electron equalazing
-			*reduction_semireaction *= ox_smr_electron_mols;   reduction_semireaction->showReaction(); printf("\n");
-			*oxidation_semireaction *= red_smr_electron_mols;  oxidation_semireaction->showReaction(); printf("\n--------------\n");
+			int max_num = (ox_smr_electron_mols > red_smr_electron_mols)? ox_smr_electron_mols : red_smr_electron_mols;
+			
+			while(true){
+
+				if(max_num % (int)ox_smr_electron_mols == 0 && max_num % (int)red_smr_electron_mols == 0){
+					break;
+				}
+				max_num++;
+			}
+
+			*reduction_semireaction *= max_num/red_smr_electron_mols;   reduction_semireaction->showReaction(); printf("\n");
+			*oxidation_semireaction *= max_num/ox_smr_electron_mols;  oxidation_semireaction->showReaction(); printf("\n--------------\n");
 			
 			Reaction new_equivalent_reaction;
 
@@ -1276,7 +1288,12 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 				new_equivalent_reaction.products.insert(  new_equivalent_reaction.products.end(), semireaction.products.begin(),  semireaction.products.end());
 			}
 
+			new_equivalent_reaction.showReaction();
+			printf("\nreduced reaction\n------------------------\n");
+
 			//reducing the reaction
+			
+			reduce:
 
 			for(int i = 0; i < new_equivalent_reaction.reactants.size(); i++){
 				for(int j = 0; j < new_equivalent_reaction.products.size(); j++){
@@ -1285,42 +1302,47 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 					Reaction_Obj* product = new_equivalent_reaction.products[j];
 
 					if(reactant->reaction_obj_type() == "compound" && product->reaction_obj_type() == "compound"/* && reactant == product*/){
-printf("COMPOUNDS");
-						if(reactant->mols > product->mols){printf("mas reactant");
-							reactant->mols -= product->mols;
-							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+
+						if(*dynamic_cast<Compound*>(reactant) == *dynamic_cast<Compound*>(product)){
+							if(reactant->mols > product->mols){
+								reactant->mols -= product->mols;
+								new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+								goto reduce;
+							}
+							if(reactant->mols < product->mols){
+								product->mols -= reactant->mols;
+								new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+								goto reduce;
+							}
+							if(reactant->mols == product->mols){
+								new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+								new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+								goto reduce;
+							}
 						}
-						if(reactant->mols < product->mols){printf("mas producto");
-							product->mols -= reactant->mols;
-							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
-							break;
-						}
-						if(reactant->mols == product->mols){printf("igual");
-							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
-							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
-							break;
-						}
+						
 					}
 					else if(reactant->reaction_obj_type() == "electron" && product->reaction_obj_type() == "electron"){
-printf("ELECTRONES");
-						if(reactant->mols > product->mols){printf("mas reactant e-");
+
+						if(reactant->mols > product->mols){
 							reactant->mols -= product->mols;
 							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+							goto reduce;
 						}
-						if(reactant->mols < product->mols){printf("mas producto e-");
+						if(reactant->mols < product->mols){
 							product->mols -= reactant->mols;
 							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
-							break;
+							goto reduce;
 						}
-						if(reactant == product){printf("igual e-");
+						if(reactant->mols == product->mols){
 							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
 							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
-							break;
+							goto reduce;
 						}
 					}
 				}
 			}
-
+			printf("\n");
 			new_equivalent_reaction.showReaction();
 		}
 	};
