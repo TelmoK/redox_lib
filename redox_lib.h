@@ -589,12 +589,14 @@ namespace rdx
 				return *this;
 			}
 			else if(this->type == "hydride" || this->type == "binary salt"){
+
 				Compound new_compound({foundElement});
 				new_compound.mols = foundElement.mols;
 				(new_compound.elements[0]).mols = 1;
 				return new_compound;
 			}
 			else if(this->type == "oxoacid"){
+
 				if(element.nomenclature == "H"){
 					Compound new_compound({getPTElement("H")});
 					new_compound.mols = element.mols;
@@ -607,6 +609,7 @@ namespace rdx
 				}
 			}
 			else if(this->type == "hydroxide"){
+
 				if(element.type == "metal"){
 					Compound new_compound({foundElement});
 					new_compound.mols = element.mols;
@@ -706,32 +709,73 @@ namespace rdx
 
 		Reaction operator+(Reaction reaction){
 
-		/*	std::vector<Reaction_Obj*> final_reactants;
-			for(int i = 0; i < reaction.reactants.size(); i++){
-				for(int j = 0; j < this->products.size(); j++){
-					
-					Reaction_Obj* reactant = reaction.reactants[i];
-					Reaction_Obj* local_product = this->products[j];
-std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_obj_type() << std::endl;
-					if(reactant->reaction_obj_type() == "electron" && local_product->reaction_obj_type() == "electron"){
+			Reaction new_equivalent_reaction;
 
-						if(reactant->mols < local_product->mols){printf("pr");
-							local_product->mols -= reactant->mols;
-							reaction.reactants.erase(reaction.reactants.begin()+i);
+			//mixing the reactions
+			new_equivalent_reaction.reactants.insert( new_equivalent_reaction.reactants.end(), reaction.reactants.begin(), reaction.reactants.end());
+			new_equivalent_reaction.reactants.insert( new_equivalent_reaction.reactants.end(), this->reactants.begin(), this->reactants.end());
+
+			new_equivalent_reaction.products.insert(  new_equivalent_reaction.products.end(), reaction.products.begin(),  reaction.products.end());
+			new_equivalent_reaction.products.insert(  new_equivalent_reaction.products.end(), this->products.begin(),  this->products.end());
+			
+
+			new_equivalent_reaction.showReaction();
+			printf("\nreduced reaction\n------------------------\n");
+
+			//reducing the reaction
+			
+			reduce:
+
+			for(int i = 0; i < new_equivalent_reaction.reactants.size(); i++){
+				for(int j = 0; j < new_equivalent_reaction.products.size(); j++){
+
+					Reaction_Obj* reactant = new_equivalent_reaction.reactants[i];
+					Reaction_Obj* product = new_equivalent_reaction.products[j];
+
+					if(reactant->reaction_obj_type() == "compound" && product->reaction_obj_type() == "compound"){
+
+						if(*dynamic_cast<Compound*>(reactant) == *dynamic_cast<Compound*>(product)){
+							if(reactant->mols > product->mols){
+								reactant->mols -= product->mols;
+								new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+								goto reduce;
+							}
+							if(reactant->mols < product->mols){
+								product->mols -= reactant->mols;
+								new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+								goto reduce;
+							}
+							if(reactant->mols == product->mols){
+								new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+								new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+								goto reduce;
+							}
 						}
-						else if(reactant->mols > local_product->mols){printf("re");
-							reactant->mols -= local_product->mols;
-							reaction.reactants.erase(this->products.begin()+j);
-							final_reactants.push_back(reactant);
+						
+					}
+					else if(reactant->reaction_obj_type() == "electron" && product->reaction_obj_type() == "electron"){
+
+						if(reactant->mols > product->mols){
+							reactant->mols -= product->mols;
+							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+							goto reduce;
 						}
-						else if(reactant->mols == local_product->mols){printf("both");
-							reaction.reactants.erase(reaction.reactants.begin()+i);
-							reaction.reactants.erase(this->products.begin()+j);
+						if(reactant->mols < product->mols){
+							product->mols -= reactant->mols;
+							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+							goto reduce;
+						}
+						if(reactant->mols == product->mols){
+							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
+							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
+							goto reduce;
 						}
 					}
 				}
 			}
-			return Reaction(final_reactants,products);*/
+			printf("\n");
+			new_equivalent_reaction.showReaction();
+			return new_equivalent_reaction;
 		}
 
 		void valance(std::vector<std::string> specif_els_to_valance = {}, bool exclude_specif_els = false){
@@ -1267,6 +1311,7 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 		void mix_semireactions(){
 
 			//electron equalazing
+			//minimum common multiple
 			int max_num = (ox_smr_electron_mols > red_smr_electron_mols)? ox_smr_electron_mols : red_smr_electron_mols;
 			
 			while(true){
@@ -1277,73 +1322,11 @@ std::cout << reactant->reaction_obj_type() << "   " << local_product->reaction_o
 				max_num++;
 			}
 
-			*reduction_semireaction *= max_num/red_smr_electron_mols;   reduction_semireaction->showReaction(); printf("\n");
-			*oxidation_semireaction *= max_num/ox_smr_electron_mols;  oxidation_semireaction->showReaction(); printf("\n--------------\n");
-			
-			Reaction new_equivalent_reaction;
+			*reduction_semireaction *= max_num / red_smr_electron_mols;   reduction_semireaction->showReaction(); printf("\n");
+			*oxidation_semireaction *= max_num / ox_smr_electron_mols;  oxidation_semireaction->showReaction(); printf("\n--------------\n");
 
-			for(Reaction semireaction : semireactions){
-
-				new_equivalent_reaction.reactants.insert( new_equivalent_reaction.reactants.end(), semireaction.reactants.begin(), semireaction.reactants.end());
-				new_equivalent_reaction.products.insert(  new_equivalent_reaction.products.end(), semireaction.products.begin(),  semireaction.products.end());
-			}
-
-			new_equivalent_reaction.showReaction();
-			printf("\nreduced reaction\n------------------------\n");
-
-			//reducing the reaction
-			
-			reduce:
-
-			for(int i = 0; i < new_equivalent_reaction.reactants.size(); i++){
-				for(int j = 0; j < new_equivalent_reaction.products.size(); j++){
-
-					Reaction_Obj* reactant = new_equivalent_reaction.reactants[i];
-					Reaction_Obj* product = new_equivalent_reaction.products[j];
-
-					if(reactant->reaction_obj_type() == "compound" && product->reaction_obj_type() == "compound"/* && reactant == product*/){
-
-						if(*dynamic_cast<Compound*>(reactant) == *dynamic_cast<Compound*>(product)){
-							if(reactant->mols > product->mols){
-								reactant->mols -= product->mols;
-								new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
-								goto reduce;
-							}
-							if(reactant->mols < product->mols){
-								product->mols -= reactant->mols;
-								new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
-								goto reduce;
-							}
-							if(reactant->mols == product->mols){
-								new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
-								new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
-								goto reduce;
-							}
-						}
-						
-					}
-					else if(reactant->reaction_obj_type() == "electron" && product->reaction_obj_type() == "electron"){
-
-						if(reactant->mols > product->mols){
-							reactant->mols -= product->mols;
-							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
-							goto reduce;
-						}
-						if(reactant->mols < product->mols){
-							product->mols -= reactant->mols;
-							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
-							goto reduce;
-						}
-						if(reactant->mols == product->mols){
-							new_equivalent_reaction.reactants.erase(new_equivalent_reaction.reactants.begin() + i);
-							new_equivalent_reaction.products.erase(new_equivalent_reaction.products.begin() + j);
-							goto reduce;
-						}
-					}
-				}
-			}
-			printf("\n");
-			new_equivalent_reaction.showReaction();
+			Reaction new_equivalent_reaction = *reduction_semireaction + *oxidation_semireaction;
 		}
+
 	};
 }
