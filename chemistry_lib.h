@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <string>
 
-namespace rdx
+namespace chm
 {
 	class Element{
 	public:
@@ -11,8 +11,10 @@ namespace rdx
 		std::string nomenclature;
 		std::string type;
 		int mols = 1;
+		float molar_mass;
 		std::vector<int> ox_numbers;
 		int current_ox_n;
+		std::string current_matter_state;
 
 		Element(std::string _nomenclature, std::vector<int> _ox_numbers, std::string _type) 
 			: nomenclature(_nomenclature), ox_numbers(_ox_numbers), type(_type)
@@ -20,6 +22,14 @@ namespace rdx
 			if(_ox_numbers.size() == 1)
 				current_ox_n = _ox_numbers[0];
 		}
+
+		Element(std::string _nomenclature, std::vector<int> _ox_numbers, std::string _type, float _molar_mass) 
+			: nomenclature(_nomenclature), ox_numbers(_ox_numbers), type(_type), molar_mass(_molar_mass)
+		{
+			if(_ox_numbers.size() == 1)
+				current_ox_n = _ox_numbers[0];
+		}
+
 		void setCurrentOxNum(int n){
 			if(std::find(ox_numbers.begin(), ox_numbers.end(), n) != ox_numbers.end())
 				current_ox_n = n;
@@ -53,58 +63,58 @@ namespace rdx
 
 		std::vector<Element> elements;
 
-		elements.push_back(Element("H",  {1,-1},      "hydrogen"));
-		elements.push_back(Element("Li", {1},         "metal"));
-		elements.push_back(Element("Na", {1},         "metal"));
-		elements.push_back(Element("K",  {1},         "metal"));
-		elements.push_back(Element("Rb", {1},         "metal"));
-		elements.push_back(Element("Cs", {1},         "metal"));
-		elements.push_back(Element("Fr", {1},         "metal"));
-		elements.push_back(Element("Be", {2},         "metal"));
-		elements.push_back(Element("Mg", {2},         "metal"));
-		elements.push_back(Element("Ca", {2},         "metal"));
-		elements.push_back(Element("Sr", {2},         "metal"));
-		elements.push_back(Element("Ba", {2},         "metal"));
-		elements.push_back(Element("Ra", {2},         "metal"));
-		elements.push_back(Element("V",  {2,3,4,5},   "metal"));
-		elements.push_back(Element("Cr", {2,3,6},     "metal"));
-		elements.push_back(Element("Mn", {2,3,4,6,7}, "metal"));
-		elements.push_back(Element("Fe", {2,3},       "metal"));
-		elements.push_back(Element("Co", {2,3},       "metal"));
-		elements.push_back(Element("Ni", {2,3},       "metal"));
-		elements.push_back(Element("Pd", {2,4},       "metal"));
-		elements.push_back(Element("Pt", {2,4},       "metal"));
-		elements.push_back(Element("Cu", {1,2},       "metal"));
-		elements.push_back(Element("Ag", {1},         "metal"));
-		elements.push_back(Element("Au", {1,3},       "metal"));
-		elements.push_back(Element("Zn", {2},         "metal"));
-		elements.push_back(Element("Cd", {2},         "metal"));
-		elements.push_back(Element("Hg", {1,2},       "metal"));
-		elements.push_back(Element("B",  {3},         "non metal"));
-		elements.push_back(Element("Al", {3},         "metal"));
-		elements.push_back(Element("Ga", {3},         "metal"));
-		elements.push_back(Element("In", {3},         "metal"));
-		elements.push_back(Element("Tl", {1,3},       "metal"));
-		elements.push_back(Element("C",  {2,4,-4},    "non metal"));
-		elements.push_back(Element("Si", {4,-4},      "non metal"));
-		elements.push_back(Element("Ge", {4},         "non metal"));
-		elements.push_back(Element("Sn", {2,4},       "metal"));
-		elements.push_back(Element("Pb", {2,4},       "metal"));
-		elements.push_back(Element("N",  {2,3,-3,4,5},"non metal"));
-		elements.push_back(Element("P",  {3,-3,4,5},  "non metal"));
-		elements.push_back(Element("As", {3,-3,5},    "non metal"));
-		elements.push_back(Element("Sb", {3,-3,5},    "non metal"));
-		elements.push_back(Element("Bi", {3,5},       "non metal"));
-		elements.push_back(Element("O",  {-2},        "oxygen"));
-		elements.push_back(Element("S",  {2,-2,4,6},  "non metal"));
-		elements.push_back(Element("Se", {-2,4,6},    "non metal"));
-		elements.push_back(Element("Te", {-2,4,6},    "non metal"));
-		elements.push_back(Element("Po", {2,4,6},     "non metal"));
-		elements.push_back(Element("F",  {-1},        "non metal"));
-		elements.push_back(Element("Cl", {1,-1,3,5,7},"non metal"));
-		elements.push_back(Element("Br", {1,-1,3,5,7},"non metal"));
-		elements.push_back(Element("I",  {1,-1,3,5,7},"non metal"));
-		elements.push_back(Element("At", {1,-1,3,5,7},"non metal"));
+		elements.push_back(Element("H",  {1,-1},      "hydrogen",    1.0079));
+		elements.push_back(Element("Li", {1},         "metal",       6.941));
+		elements.push_back(Element("Na", {1},         "metal",       22.99));
+		elements.push_back(Element("K",  {1},         "metal",       39.098));
+		elements.push_back(Element("Rb", {1},         "metal",       85.468));
+		elements.push_back(Element("Cs", {1},         "metal",       132.91));
+		elements.push_back(Element("Fr", {1},         "metal",       233));
+		elements.push_back(Element("Be", {2},         "metal",       9.0122));
+		elements.push_back(Element("Mg", {2},         "metal",       24.305));
+		elements.push_back(Element("Ca", {2},         "metal",       40.078));
+		elements.push_back(Element("Sr", {2},         "metal",       87.62));
+		elements.push_back(Element("Ba", {2},         "metal",       137.33));
+		elements.push_back(Element("Ra", {2},         "metal",       226));
+		elements.push_back(Element("V",  {2,3,4,5},   "metal",       50.942));
+		elements.push_back(Element("Cr", {2,3,6},     "metal",       51.996));
+		elements.push_back(Element("Mn", {2,3,4,6,7}, "metal",       54.938));
+		elements.push_back(Element("Fe", {2,3},       "metal",       55.845));
+		elements.push_back(Element("Co", {2,3},       "metal",       58.933));
+		elements.push_back(Element("Ni", {2,3},       "metal",       58.693));
+		elements.push_back(Element("Pd", {2,4},       "metal",       106.42));
+		elements.push_back(Element("Pt", {2,4},       "metal",       195.08));
+		elements.push_back(Element("Cu", {1,2},       "metal",       63.546));
+		elements.push_back(Element("Ag", {1},         "metal",       107.87));
+		elements.push_back(Element("Au", {1,3},       "metal",       196.97));
+		elements.push_back(Element("Zn", {2},         "metal",       65.38));
+		elements.push_back(Element("Cd", {2},         "metal",       112.41));
+		elements.push_back(Element("Hg", {1,2},       "metal",       200.59));
+		elements.push_back(Element("B",  {3},         "non metal",   10.811));
+		elements.push_back(Element("Al", {3},         "metal",       26.982));
+		elements.push_back(Element("Ga", {3},         "metal",       69.723));
+		elements.push_back(Element("In", {3},         "metal",       114.82));
+		elements.push_back(Element("Tl", {1,3},       "metal",       204.38));
+		elements.push_back(Element("C",  {2,4,-4},    "non metal",   12.011));
+		elements.push_back(Element("Si", {4,-4},      "non metal",   28.086));
+		elements.push_back(Element("Ge", {4},         "non metal",   72.64));
+		elements.push_back(Element("Sn", {2,4},       "metal",       118.71));
+		elements.push_back(Element("Pb", {2,4},       "metal",       207.2));
+		elements.push_back(Element("N",  {2,3,-3,4,5},"non metal",   14.007));
+		elements.push_back(Element("P",  {3,-3,4,5},  "non metal",   30.974));
+		elements.push_back(Element("As", {3,-3,5},    "non metal",   74.922));
+		elements.push_back(Element("Sb", {3,-3,5},    "non metal",   121.76));
+		elements.push_back(Element("Bi", {3,5},       "non metal",   208.98));
+		elements.push_back(Element("O",  {-2},        "oxygen",      15.999));
+		elements.push_back(Element("S",  {2,-2,4,6},  "non metal",   32.065));
+		elements.push_back(Element("Se", {-2,4,6},    "non metal",   78.96));
+		elements.push_back(Element("Te", {-2,4,6},    "non metal",   127.6));
+		elements.push_back(Element("Po", {2,4,6},     "non metal",   209));
+		elements.push_back(Element("F",  {-1},        "non metal",   18.998));
+		elements.push_back(Element("Cl", {1,-1,3,5,7},"non metal",   35.453));
+		elements.push_back(Element("Br", {1,-1,3,5,7},"non metal",   79.904));
+		elements.push_back(Element("I",  {1,-1,3,5,7},"non metal",   126.9));
+		elements.push_back(Element("At", {1,-1,3,5,7},"non metal",   210));
 
 		(elements[0]).current_ox_n = 1;
 
@@ -114,7 +124,7 @@ namespace rdx
 		}
 
 		std::cout << nomenclature << " is not in the periodic table\n";
-		return Element("Null",{},"");
+		return Element("Null",{},"",0);
 	}
 
 	class Reaction_Obj{
@@ -221,7 +231,7 @@ namespace rdx
 		}
 
 		friend std::vector<int> is_elemet_of_type(std::string e_type, Compound compound){
-			vector<int> indexes;
+			std::vector<int> indexes;
 			for(int i = 0; i < compound.elements.size(); i++){
 				Element element = compound.elements[i];
 				if(element.type == e_type)
@@ -553,6 +563,8 @@ namespace rdx
 				}
 			}
 
+			this->set_valences();
+
 			if(this->valence() != 0){
 
 				if(valence() > 0){
@@ -572,7 +584,6 @@ namespace rdx
 			float val = 0;
 			for(Element element : elements)
 				val += element.current_ox_n * element.mols;
-			
 			return val * this->mols;
 		}
 
@@ -662,7 +673,7 @@ namespace rdx
 					Compound new_compound(els);
 					return new_compound;
 				}
-			}
+			}else{return *this;}return *this;
 		}
 	};
 
@@ -871,27 +882,66 @@ namespace rdx
 					first_matrix[i][j + reactants.size()] = element_mols_count * current_compound_mols;
 				}
 			}
+			//-------------------------------------------------------------------------------------------------------------------------
+			//Elimitating repeated equivalent equations
+			//-------------------------------------------------------------------------------------------------------------------------
+			std::vector<float> row_factor;
+			for(int i = 0; i < present_elements.size(); i++){
+				for(int j = 0; j < reactants.size() + products.size(); j++){
+	
+					if(first_matrix[i][j] != 0){ row_factor.push_back(first_matrix[i][j]); break;} 
+					if(j == reactants.size() + products.size() -1) row_factor.push_back(0);
+				}
+			}
+
+			std::vector<int> excluded;
+
+			for(int i = 0; i < present_elements.size(); i++){
+
+				if(std::find(excluded.begin(), excluded.end(), i) != excluded.end()) continue; //is this row already excluded?
+
+				for(int j = 0; j < present_elements.size(); j++){
+
+					if(std::find(excluded.begin(), excluded.end(), j) != excluded.end() || j == i) continue; //is this row already excluded or the same compared to?
+
+					bool differ = false;
+					for(int k = 0; k < (reactants.size() + products.size()); k++){
+						if(first_matrix[i][k] * row_factor[j] != first_matrix[j][k] * row_factor[i]){
+							differ = true;
+							break;
+						}
+					}
+					if(differ == false){ 
+						excluded.push_back(j); 
+						break;
+					}
+				}
+			}
+			//-------------------------------------------------------------------------------------------------------------------------
+			//-------------------------------------------------------------------------------------------------------------------------
 
 			//assuming coefficent 'a' is 1 we reduce the number of coefficents and set an independent term column
 			//we create a second matrix for solving the rest of unknowns
 			int num_of_coeficents = products.size() + reactants.size();
-			int num_of_equations = present_elements.size();
+			int num_of_equations = present_elements.size() /**/-excluded.size();
 
 			float** matrix = new float*[ num_of_equations ];
 			for(int i = 0; i < num_of_equations; i++)
 				matrix[i] = new float[ num_of_coeficents+1 ];
 
+			
+int skip = 0;//RETOCAR
 			for(int i = 0; i < num_of_equations; i++){
 				for(int j = 0; j < num_of_coeficents-1; j++){
-					matrix[i][j] = first_matrix[i][j+1];
+					/**/if(std::find(excluded.begin(), excluded.end(), i) != excluded.end()) skip++;
+					matrix[i][j] = first_matrix[i/**/+skip/**/][j+1];
 				}
 				matrix[i][num_of_coeficents-1] = -first_matrix[i][0];
 			}
 			num_of_coeficents--;
 
 
-			
-			//First ensure that all the diagonal values are != 0
+		/*	//First ensure that all the diagonal values are != 0
 			for(int i = 0; i < num_of_equations; i++){
 
 				if(matrix[i][i] != 0) continue;
@@ -912,16 +962,84 @@ namespace rdx
 					}
 					break;
 				}
-			}
+			}*/
+			ensure:
+			auto SHOW_MATRIX_STATE = [&](){
+				for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
+					for(int j = 0; j < num_of_coeficents+1; j++){
+						std::cout << ((j == num_of_coeficents)? "| " : "") << matrix[i][j] << "  ";
+					}
+					std::cout << "\n\n";
+				}std::cout << "\n----------------------\n";
+			};
+			
+			SHOW_MATRIX_STATE();
 
+			//First ensure that all the diagonal values are != 0
+			for(int i = 0; i < num_of_equations; i++){
+
+				if(matrix[i][i] != 0) continue;
+
+				//if the diagonal coeficent is 0
+				// search for a matrix row to swap
+				for(int j = i+1; j < num_of_equations; j++){
+
+					if(matrix[j][i] == 0) continue;
+
+					//if a row was found
+					//swaping the rows
+					for(int k = 0; k < num_of_coeficents+1; k++){
+
+						float aux = matrix[j][k];
+						matrix[j][k] = matrix[i][k];
+						matrix[i][k] = aux;
+					}
+					std::cout << "\nCHANGED\n";
+					SHOW_MATRIX_STATE();
+					break;
+				}
+				
+
+			}
+			bool allOk = true;
+			int err_index;
+			for(int i = 0; i < num_of_equations; i++){
+				if(matrix[i][i] == 0){
+					allOk = false;
+					err_index = i;
+					break;
+				}
+			}
+			if(allOk == false){
+
+				for(int i = 0; i < num_of_equations; i++){
+
+					if(matrix[i][err_index] == 0) continue;
+					if(matrix[err_index][i] == 0) continue;printf("eeeyyy");
+
+					for(int k = 0; k < num_of_coeficents+1; k++){
+std::cout << "err_index = " << err_index << std::endl;
+						float aux = matrix[i][k];std::cout << "aux = " << aux << std::endl;
+						matrix[i][k] = matrix[err_index][k];std::cout << "matrix[i][k] = " << matrix[i][k] << std::endl;
+						matrix[err_index][k] = aux;std::cout << "matrix[err_index][k] = " << matrix[err_index][k] << std::endl;
+					}std::cout << "\n";
+					break;
+				}
+				
+				goto ensure;
+			}
+			
+
+			
 			gauss_jordan_elimination:
 
-			for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
+		/*	for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
 				for(int j = 0; j < num_of_coeficents+1; j++){
 					std::cout << ((j == num_of_coeficents)? "| " : "") << matrix[i][j] << "  ";
 				}
 				std::cout << "\n\n";
-			}std::cout << "\n----------------------\n";
+			}std::cout << "\n----------------------\n";*/
+			SHOW_MATRIX_STATE();
 
 			//convert the coeficients under the diagonal into 0
 			for(int i = 0; i < num_of_coeficents; i++){
@@ -1057,326 +1175,52 @@ namespace rdx
 		}
 	};
 
-	class Redox_Valancer{
-
-		Reaction raw_reaction;
-		std::vector<Reaction> semireactions; 
-		float ox_smr_electron_mols = 0;
-		float red_smr_electron_mols = 0;
-		Reaction* oxidation_semireaction = new Reaction();
-		Reaction* reduction_semireaction = new Reaction();
-
-	public:
-
-		std::string medium;
-
-		Redox_Valancer(){}
-
-		Redox_Valancer(Reaction _reaction) : raw_reaction(_reaction){}
-
-		void set_semireactions(){
-			
-			medium = "base";
-
-			for(Reaction_Obj* R : raw_reaction.reactants){
-				for(Reaction_Obj* P : raw_reaction.products){
-
-					if(R->reaction_obj_type() == "compound" && P->reaction_obj_type() == "compound"){
-
-						Compound reactant = *(dynamic_cast<Compound*>(R));
-						reactant.set_valences();
-						Compound product = *(dynamic_cast<Compound*>(P));
-						product.set_valences();
-
-						if(reactant.type == "hydracid" || reactant.type == "hydride" || reactant.type == "oxoacid")
-							medium = "acid";
-
-						for(Element reactant_element : reactant.elements){
-							for(Element product_element : product.elements){
-								
-								if(reactant_element.nomenclature == product_element.nomenclature &&
-									reactant_element.current_ox_n != product_element.current_ox_n)  //element has changed its oxidation number
-								{
-									std::vector<Reaction_Obj*> new_semireaction_reactants = {new Compound(reactant.dissociate(reactant_element))};
-									std::vector<Reaction_Obj*> new_semireaction_products = {new Compound(product.dissociate(product_element))};
-									
-									Reaction new_semireaction(new_semireaction_reactants, new_semireaction_products);
-
-									semireactions.push_back(new_semireaction);
-								}
-							}
-						}
-					}
-				}
-			}
+	float molar_mass_of(Compound compound){
+		float total_molar_mass = 0;
+		for(Element element : compound.elements){
+			total_molar_mass += element.molar_mass * element.mols;
 		}
+		total_molar_mass *= compound.mols;
+		return total_molar_mass;
+	}
 
-		void showSemireactions(){
+	float gTo_mols_of(Compound compound, float grams){
 
-			for(Reaction sr : semireactions){
-				sr.showReaction(); 
-				std::cout << std::endl;
-			}
-		}
+		return grams * (1 / molar_mass_of(compound));
+	}
 
-		std::vector<Reaction> oxidation_semireactions(){
+	float gTo_mols_of(Element element, float grams){
+		float total_molar_mass = element.molar_mass * element.mols;
+		return grams * (1 / total_molar_mass);
+	}
 
-			std::vector<Reaction> ox_semireactions;
-			for(Reaction& semireaction : semireactions){
+	float molarity(float mols, float liters){
+		return mols / liters;
+	}
 
-				for(Reaction_Obj* R : semireaction.reactants){
-					for(Reaction_Obj* P : semireaction.products){
+	float mols_in_solution(float liters, float molarity){
+		return molarity * liters;
+	}
 
-						Compound reactant = *(dynamic_cast<Compound*>(R));
-						Compound product = *(dynamic_cast<Compound*>(P));
+	float liters_in_solution(float mols, float molarity){
+		return mols / molarity;
+	}
 
-						for(Element reactant_element : reactant.elements)
-							for(Element product_element : product.elements)
-								if(reactant_element.current_ox_n > product_element.current_ox_n)//if gained electrons
-									ox_semireactions.push_back(semireaction);
-					}
-				}
-			}
-			return ox_semireactions;
-		}
+	float density(float mass, float liters){
+		return mass / liters;
+	}
 
-		std::vector<Reaction> reduction_semireactions(){
+	float molarity_to_density_of(Compound compound, float molarity){
+		return molarity * molar_mass_of(compound);
+	}
 
-			std::vector<Reaction> red_semireactions;
-			for(Reaction& semireaction : semireactions){
+	float density_to_molarity_of(Compound compound, float density){
+		return density / molar_mass_of(compound);
+	}
 
-				for(Reaction_Obj* R : semireaction.reactants){
-					for(Reaction_Obj* P : semireaction.products){
+	namespace rdx
+	{
 
-						Compound reactant = *(dynamic_cast<Compound*>(R));
-						Compound product = *(dynamic_cast<Compound*>(P));
-
-						for(Element reactant_element : reactant.elements)
-							for(Element product_element : product.elements)
-								if(reactant_element.current_ox_n < product_element.current_ox_n)//if lost electrons
-								{	red_semireactions.push_back(semireaction); break;}
-					}
-				}
-			}
-			return red_semireactions;
-		}
-
-		void valance_semireactions(){
+	}
 	
-
-			//ensure there are only 2 semireactions joining the all the oxidation semireactions and all the reduction semireactions
-
-		/*	Reaction unique_ox_semireaction;
-			std::vector<Reaction> ox_semireactions = this->oxidation_semireactions();
-			for(Reaction semireaction : ox_semireactions){
-
-				unique_ox_semireaction.reactants.insert(unique_ox_semireaction.reactants.end(), semireaction.reactants.begin(), semireaction.reactants.end());
-				unique_ox_semireaction.products.insert(unique_ox_semireaction.products.end(), semireaction.products.begin(), semireaction.products.end());
-			}
-
-			Reaction unique_red_semireaction;
-			std::vector<Reaction> red_semireactions = this->reduction_semireactions();
-			for(Reaction semireaction : red_semireactions){
-
-				unique_red_semireaction.reactants.insert(unique_red_semireaction.reactants.end(), semireaction.reactants.begin(), semireaction.reactants.end());
-				unique_red_semireaction.products.insert(unique_red_semireaction.products.end(), semireaction.products.begin(), semireaction.products.end());
-			}
-
-			this->semireactions.clear();
-			semireactions.push_back(unique_ox_semireaction);
-			semireactions.push_back(unique_red_semireaction);*/
-
-
-			//non oxygen elements valance
-			for(Reaction sr : semireactions)
-				sr.valance({"O"},true); 
-			
-			
-			if(medium == "acid"){// ADD H2Os AND H+
-				
-				for(Reaction& semireaction : semireactions){
-
-					int num_of_oxygen_R = 0;
-
-					for(Reaction_Obj* reactant : semireaction.reactants){//counting the oxygen in the reactives
-						if(reactant->reaction_obj_type() == "compound"){
-
-							Compound compound = *(dynamic_cast<Compound*>(reactant));
-
-							for(int i = 0; i < compound.elements.size(); i++){
-								if((compound.elements[i]).nomenclature == "O")
-									num_of_oxygen_R += (compound.elements[i]).mols * compound.mols;
-							}
-						}
-					}
-
-					int num_of_oxygen_P = 0;
-
-					for(Reaction_Obj* product : semireaction.products){//counting the oxygen in the products
-						if(product->reaction_obj_type() == "compound"){
-
-							Compound compound = *(dynamic_cast<Compound*>(product));
-
-							for(int i = 0; i < compound.elements.size(); i++){
-								if((compound.elements[i]).nomenclature == "O")
-									num_of_oxygen_P += (compound.elements[i]).mols * compound.mols;
-							}
-						}
-					}
-					
-					//oxigen valancing
-					if(num_of_oxygen_R > num_of_oxygen_P && num_of_oxygen_R > 0){
-
-						std::string waters = std::to_string(num_of_oxygen_R - num_of_oxygen_P)+"H2O";
-						semireaction.products.push_back( new Compound(waters) );
-
-						//hydrogen valancing
-						Compound* H = new Compound({getPTElement("H")});
-						H->mols = (num_of_oxygen_R - num_of_oxygen_P) * 2;
-						semireaction.reactants.push_back( H );
-					}
-					else if(num_of_oxygen_R < num_of_oxygen_P && num_of_oxygen_P > 0){
-
-						std::string waters = std::to_string(num_of_oxygen_P - num_of_oxygen_R)+"H2O";
-						semireaction.reactants.push_back( new Compound(waters) );
-
-						//hydrogen valancing
-						Compound* H = new Compound({getPTElement("H")});
-						H->mols = (num_of_oxygen_P - num_of_oxygen_R) * 2;
-						semireaction.products.push_back( H );
-					}
-					
-				}
-			}
-			else if(medium == "base"){// ADD H2Os AND OH-
-				
-				for(Reaction& semireaction : semireactions){
-
-					int num_of_oxygen_R = 0;
-
-					for(Reaction_Obj* reactant : semireaction.reactants){//counting the oxygen in the reactives
-						if(reactant->reaction_obj_type() == "compound"){
-
-							Compound compound = *(dynamic_cast<Compound*>(reactant));
-
-							for(int i = 0; i < compound.elements.size(); i++){
-								if((compound.elements[i]).nomenclature == "O")
-									num_of_oxygen_R += (compound.elements[i]).mols * compound.mols;
-							}
-						}
-					}
-
-					int num_of_oxygen_P = 0;
-
-					for(Reaction_Obj* product : semireaction.products){//counting the oxygen in the products
-						if(product->reaction_obj_type() == "compound"){
-
-							Compound compound = *(dynamic_cast<Compound*>(product));
-
-							for(int i = 0; i < compound.elements.size(); i++){
-								if((compound.elements[i]).nomenclature == "O")
-									num_of_oxygen_P += (compound.elements[i]).mols * compound.mols;
-							}
-						}
-					}
-					
-					//oxigen valancing
-					if(num_of_oxygen_R > num_of_oxygen_P && num_of_oxygen_R > 0){
-
-						std::string waters = std::to_string(num_of_oxygen_R - num_of_oxygen_P)+"H2O";
-						semireaction.reactants.push_back( new Compound(waters) );
-
-						//hydrogen valancing
-						Compound* OH = new Compound("OH");
-						OH->mols = (num_of_oxygen_R - num_of_oxygen_P) * 2;
-						semireaction.products.push_back( OH );
-					}
-					else if(num_of_oxygen_R < num_of_oxygen_P && num_of_oxygen_P > 0){
-
-						std::string waters = std::to_string(num_of_oxygen_P - num_of_oxygen_R)+"H2O";
-						semireaction.products.push_back( new Compound(waters) );
-
-						//hydrogen valancing
-						Compound* OH = new Compound("OH");
-						OH->mols = (num_of_oxygen_P - num_of_oxygen_R) * 2;
-						semireaction.reactants.push_back( OH );
-					}
-					
-				}
-			}
-
-
-			Reaction unique_ox_semireaction;
-			std::vector<Reaction> ox_semireactions = this->oxidation_semireactions();
-			for(Reaction semireaction : ox_semireactions){
-
-				unique_ox_semireaction.reactants.insert(unique_ox_semireaction.reactants.end(), semireaction.reactants.begin(), semireaction.reactants.end());
-				unique_ox_semireaction.products.insert(unique_ox_semireaction.products.end(), semireaction.products.begin(), semireaction.products.end());
-			}
-
-			Reaction unique_red_semireaction;
-			std::vector<Reaction> red_semireactions = this->reduction_semireactions();std::cout <<  this->reduction_semireactions().size()<<" \n";
-			for(Reaction semireaction : red_semireactions){
-semireaction.showReaction();printf("\n");
-				unique_red_semireaction.reactants.insert(unique_red_semireaction.reactants.end(), semireaction.reactants.begin(), semireaction.reactants.end());
-				unique_red_semireaction.products.insert(unique_red_semireaction.products.end(), semireaction.products.begin(), semireaction.products.end());
-			}
-
-			this->semireactions.clear();
-			semireactions.push_back(unique_ox_semireaction);
-			semireactions.push_back(unique_red_semireaction);
-std::cout <<"EEEEEEEEEEEE  " <<semireactions.size()<<"\n";
-			//electron valancing
-
-			for(Reaction& semireaction : semireactions){
-
-				float total_reactant_valence = 0;
-				float total_product_valence = 0;
-
-				for(Reaction_Obj* reactant : semireaction.reactants)
-					total_reactant_valence += reactant->valence();
-
-				for(Reaction_Obj* product : semireaction.products)
-					total_product_valence += product->valence();
-
-				if(total_reactant_valence - total_product_valence < 0){// reduction
-					
-					reduction_semireaction = &semireaction;
-					red_smr_electron_mols = -(total_reactant_valence - total_product_valence);
-				}
-				else if(total_reactant_valence - total_product_valence > 0){// oxidation
-					
-					oxidation_semireaction = &semireaction;
-					ox_smr_electron_mols = total_reactant_valence - total_product_valence;
-				}
-			}
-
-			if(ox_smr_electron_mols != 0 && red_smr_electron_mols != 0){
-				reduction_semireaction->products.push_back( new Electron( red_smr_electron_mols ) );
-				oxidation_semireaction->reactants.push_back( new Electron( ox_smr_electron_mols ) );
-			}
-			
-		}
-
-		void mix_semireactions(){
-
-			//electron equalazing
-			//minimum common multiple
-			int max_num = (ox_smr_electron_mols > red_smr_electron_mols)? ox_smr_electron_mols : red_smr_electron_mols;
-			
-			while(true){
-
-				if(max_num % (int)ox_smr_electron_mols == 0 && max_num % (int)red_smr_electron_mols == 0){
-					break;
-				}
-				max_num++;
-			}
-
-			*reduction_semireaction *= max_num / red_smr_electron_mols;   reduction_semireaction->showReaction(); printf("\n");
-			*oxidation_semireaction *= max_num / ox_smr_electron_mols;  oxidation_semireaction->showReaction(); printf("\n--------------\n");
-
-			Reaction new_equivalent_reaction = *reduction_semireaction + *oxidation_semireaction;
-		}
-
-	};
 }
