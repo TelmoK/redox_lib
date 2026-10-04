@@ -2,10 +2,541 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <initializer_list>
+#include <stdexcept>
+#include <math.h>
+#include <numeric>
 
 namespace chm
 {
-	class Element{
+	namespace utils
+	{
+		bool chr_is_number(char c)
+		{
+			return c > 47 && c < 58;
+		}
+
+		bool chr_is_uppercase(char c)
+		{
+			return c > 64 && c < 91;
+		}
+
+		bool chr_is_lowercase(char c)
+		{
+			return c > 96 && c < 123;
+		}
+
+		int chr_to_int(char c)
+		{
+			return (int)(c - 48);
+		}
+
+		template<class T>
+		bool is_value_in(T value, std::initializer_list<T> candidates)
+		{
+			bool found = false;
+			auto it = candidates.begin();
+
+			while (!found && it != candidates.end()) {
+				found = (*it == value); // the requested value is in the list
+				++it; 
+			}
+
+			return found;
+		}
+	}
+
+	namespace math
+	{
+		void decimal_to_fraccion(float decimal, int& numerator, int& denominator, int maxNumerator = 1000) 
+		{
+			// Separate de sign from the integer part
+			float sign = (decimal < 0) ? -1.0 : 1.0;
+			decimal = std::abs(decimal);
+			
+			// If the number is almost zero we avoid dividing by zero
+			if (decimal < 1e-5f) {
+				numerator = 0;
+				denominator = 1;
+				return;
+			}
+			
+			int i = 1;
+			bool numbersFound = false;
+
+			float inverseDecimal = 1.0f / decimal;
+
+			while(i < maxNumerator && !numbersFound)
+			{
+				// Getting the denominator by formula sqrt(inverseDecimal * decimal) * numerator^2
+				numerator = i;
+				float den = inverseDecimal * numerator; // simplification of the formula, better to use as it doesn't have square root
+
+				// Check if the posible denomiator is an integer, we check with a numeric noise tolerance 
+				float diff = den - std::round(den);
+				
+				if(std::abs(diff) < 1e-4f) {
+					numbersFound = true;
+					numerator *= static_cast<int>(sign);
+					denominator = static_cast<int>(std::round(den));
+				}
+				
+				++i;
+			}
+		}
+
+		long long lcm(const std::vector<int>& values) 
+		{
+			// We use long long for computational precission safety
+			long long globalLCM = 1;
+
+			for (int val : values) {
+				if (val > 0) { // Ignoring zeros for safety
+					globalLCM = std::lcm(globalLCM, val);
+				}
+			}
+			return globalLCM;
+		}
+
+		template<class T>
+		class Vector
+		{
+			std::vector<T> _elements;
+
+		public:
+
+			Vector(int size)
+			{
+				_elements.resize(size, 0);
+			}
+
+			Vector() : Vector(0){}
+
+			Vector(std::initializer_list<T> elementList)
+				: _elements{elementList}
+			{
+			}
+
+			Vector(std::vector<T> stdVec)
+				: _elements(stdVec)
+			{
+			}
+
+			int dimensions()
+			{
+				return _elements.size();
+			}
+
+			T& operator[](std::size_t idx)
+			{
+				return _elements[idx]; 
+			}
+
+			Vector<T>& operator/=(const T& scalar)
+			{
+				for(T& elem : _elements)
+					elem /= scalar;
+
+				return *this;
+			}
+
+			Vector<T> operator/(const T& scalar)
+			{
+				Vector<T> vec(dimensions());
+
+				for(int i = 0; i < _elements.size(); ++i)
+					vec[i] = _elements[i] / scalar;
+
+				return vec;
+			}
+
+			Vector<T>& operator*=(const T& scalar)
+			{
+				for(T& elem : _elements)
+					elem *= scalar;
+
+				return *this;
+			}
+
+			Vector<T> operator*(const T& scalar)
+			{
+				Vector<T> vec(dimensions());
+
+				for(int i = 0; i < _elements.size(); ++i)
+					vec[i] = _elements[i] * scalar;
+
+				return vec;
+			}
+
+			Vector<T>& operator+=(const Vector<T>& other)
+			{
+				if(dimensions() != other.dimensions())
+					throw std::runtime_error("Vector<T> error: Vectors must have the same dimensions");
+
+				for(int i = 0; i < _elements.size(); ++i)
+					_elements[i] += other[i];
+
+				return *this;
+			}
+
+			Vector<T> operator+(const Vector<T>& other)
+			{
+				if(dimensions() != other.dimensions())
+					throw std::runtime_error("Vector<T> error: Vectors must have the same dimensions");
+
+				Vector<T> vec(dimensions());
+
+				for(int i = 0; i < _elements.size(); ++i)
+					vec[i] = _elements[i] + other[i];
+
+				return vec;
+			}
+
+			Vector<T> operator-()
+			{
+				return (*this * -1);
+			}
+
+			Vector<T>& operator-=(const Vector<T>& other)
+			{
+				return (*this += -other);
+			}
+
+			Vector<T> operator-(const Vector<T>& other)
+			{
+				return (*this + (-other));
+			}
+
+			// Forwarding the internal vector interator to work with for-each loops
+			auto begin() { return _elements.begin(); }
+			auto end() { return _elements.end(); }
+
+			// Const overloads so it works when the Team object is const
+			auto begin() const { return _elements.begin(); }
+			auto end() const { return _elements.end(); }
+
+			std::vector<T> toStd()
+			{
+				return _elements;
+			}
+		};
+
+		template<class T>
+		class Matrix
+		{
+		protected:
+			std::vector<std::vector<T>> _matrix;
+			
+			int _columnNum;
+			int _rowNum;
+
+		public:
+
+			Matrix(int rows, int columns)
+			{
+				_matrix.resize(rows);
+
+				for(std::vector<T>& row : _matrix)
+					row.resize(columns);
+
+				_columnNum = columns;
+				_rowNum = rows;
+			}
+
+			Matrix() : Matrix(0, 0)
+			{
+			}
+
+			int rowNum()
+			{
+				return _rowNum;
+			}
+
+			int colNum()
+			{
+				return _columnNum;
+			}
+
+			std::pair<T, T> dimensions()
+			{
+				return {_rowNum, _columnNum};
+			}
+
+			T& operator[](std::size_t idx)
+			{
+				return _matrix[idx]; 
+			}
+
+			/**
+			 * Returns the indexed column as a vector in a top to bottom order
+			 */
+			Vector<T> col(int columnIndex)
+			{
+				Vector<T> vec(_rowNum);
+
+				if(columnIndex < 0 || columnIndex >= _columnNum)
+					return vec;
+
+				for(int i = 0; i < _matrix.size(); ++i) {
+					std::vector<T>& row = _matrix[i];
+					vec[i] = row[columnIndex];
+				}
+
+				return vec;
+			}
+
+			Vector<T> row(int rowIndex)
+			{
+				if(rowIndex < 0 || rowIndex >= _columnNum) {
+					Vector<T> vec;
+					return vec;
+				}
+
+				return Vector<T>(_matrix[rowIndex]);
+			}
+
+			void setCol(int columnIndex, Vector<T> columnVector)
+			{
+				if(columnIndex < 0 || columnIndex >= _columnNum || columnIndex < 0 || columnIndex >= _columnNum)
+					throw std::out_of_range("Matrix<T> error: column index was out of range");
+
+				for(int i = 0; i < _matrix.size(); ++i) {
+					std::vector<T>& row = _matrix[i];
+					row[columnIndex] = columnVector[i];
+				}
+			}
+
+			void setRow(int rowIndex, Vector<T> rowVector)
+			{
+				if(rowIndex < 0 || rowIndex >= _columnNum || rowIndex < 0 || rowIndex >= _columnNum)
+					throw std::out_of_range("Matrix<T> error: column index was out of range");
+
+				std::vector<T> vec = rowVector.toStd();
+
+				int sizeDiff = rowVector.dimensions() - _columnNum;
+				
+				// If the given vector is bigger we clamp it
+				if(sizeDiff > 0)
+					for(int i = 0; i < sizeDiff; ++i)
+						vec.pop_back();
+
+				_matrix[rowIndex] = rowVector.toStd();
+			}
+
+			Matrix<T>& operator+=(const Matrix<T>& other)
+			{
+				if(dimensions() != other.dimensions())
+					throw std::runtime_error("Matrix<T> error: Matrices must have the same dimensions");
+
+				for(int i = 0; i < _matrix.size(); ++i)
+					_matrix[i] += other[i];
+
+				return *this;
+			}
+
+			Matrix<T> operator+(const Vector<T>& other)
+			{
+				if(dimensions() != other.dimensions())
+					throw std::runtime_error("Matrix<T> error: Matrices must have the same dimensions");
+
+				Vector<T> vec(dimensions());
+
+				for(int i = 0; i < _matrix.size(); ++i)
+					vec[i] = _matrix[i] + other[i];
+
+				return vec;
+			}
+
+			void pushBackColumn()
+			{
+				++_columnNum;
+
+				for(std::vector<T>& row : _matrix)
+					row.resize(_columnNum, 0); // Add a new position with a 0
+			}
+
+			void swapRows(int r1, int r2)
+			{
+				if(r1 < 0 || r1 >= _rowNum || r2 < 0 || r2 >= _rowNum)
+					throw std::out_of_range("Matrix<T> error: row index was out of range");
+
+				if(r1 == r2)
+					return;
+
+				_matrix[r1].swap(r2);
+			}
+
+			void swapCols(int c1, int c2)
+			{
+				if(c1 < 0 || c1 >= _columnNum || c2 < 0 || c2 >= _columnNum)
+					throw std::out_of_range("Matrix<T> error: column index was out of range");
+
+				if(c1 == c2)
+					return;
+
+				for(std::vector<T>& row : _matrix)
+					std::swap(row[c1], row[c2]);
+			}
+		};
+
+		template<class T>
+		class EquationSystemSolver
+		{
+		public:
+			virtual ~EquationSystemSolver(){}
+			std::vector<T> solve(Matrix<T> system_matrix) = 0;
+		};
+
+		template<class T>
+		class GaussJordan_EqSystemSolver : public EquationSystemSolver<T>
+		{
+		public:
+			GaussJordan_EqSystemSolver(){}
+			~GaussJordan_EqSystemSolver(){}
+		
+		private:
+			
+			void applyGaussJordan(Matrix<T>& system_matrix, int& firstFreeVariable)
+			{
+				// Default value if the system is consistent independent, the index of the free variable is the number of variables
+				firstFreeVariable = system_matrix.colNum() - 1;
+
+				// The system can be consistent dependent if we find a row of zeros
+				bool rowOfZerosFound = false; 
+				int row = 0;
+				
+				while(row < system_matrix.rowNum() && !rowOfZerosFound)
+				{
+					// Look for the maximum value in the lower part of the column
+					Vector<T> column = system_matrix.col(row);
+					int betterPivotColValue = column[row];
+					int betterPivotRow = row;
+					
+					for(int r = row + 1; r < column.dimensions(); ++r)
+					{
+						if(abs(column[r]) > abs(betterPivotColValue)) {
+							betterPivotColValue = column[r];
+							betterPivotRow = r;
+						}
+					}
+
+					// Check if we have a consistent dependent system if we only find zeros in the rest of the column
+					if(betterPivotColValue < 1e-5f)
+					{
+						rowOfZerosFound = true;
+						firstFreeVariable = row; // The index of the first free variable of the consistent dependet system
+					}
+					else // Otherwise we continue with the Gauss-Jordan algorithm
+					{
+						// Swap row with better candidate if there is one
+						system_matrix.swapRows(row, betterPivotRow);
+
+						// Normalize de row turning the diagonal column to 1
+						Vector<T> normalizedRow = system_matrix.row(row) / betterPivotColValue;
+						system_matrix.setRow(row, normalizedRow);
+
+						// Clean the column in the rest of rows making zero their value
+						for(int r = 0; r < system_matrix.rowNum(); ++r)
+						{
+							if(r != row)
+							{
+								int currentCol = row; // just for clarity
+
+								T factor = system_matrix[r][currentCol];
+								Vector<T> cleanedRow = system_matrix.row(r) - system_matrix.row(row) * factor;
+							}
+						}
+					
+						++row;						
+					}
+				}
+
+				// If the system has more variables than equations
+				if(!rowOfZerosFound) {
+					firstFreeVariable = system_matrix.rowNum();
+				}
+			}
+
+			std::vector<T> getDenominators(std::vector<T> decimalList)
+			{
+				std::vector<T> denominators;
+
+				for (T val : decimalList) 
+				{
+					if (val > 1e-5) { // We ignore the zeros (considering that the can be numeric noise)
+						int num, den;
+						decimal_to_fraccion(val, num, den);
+						denominators.push_back(den);
+					}
+				}
+
+				return denominators;
+			}
+
+			std::vector<T> obtainSolution(Matrix<T>& system_matrix, int firstFreeVariable)
+			{
+				int numOfVariables = system_matrix.colNum() - 1;
+
+				std::vector<T> solution(numOfVariables, 0);
+
+				// If the system is consisten independent we are done
+				if(firstFreeVariable >= numOfVariables) 
+				{
+					for(int i = 0; i < firstFreeVariable; ++i)
+					{
+						const int freeTermCol = system_matrix.colNum() - 1;
+						solution[i] = system_matrix[i][freeTermCol];
+					}
+
+					return solution;
+				}
+
+				// If the system is consistent dependent
+				int freeVariables = numOfVariables - firstFreeVariable;
+
+				// Fill the solution vector as a combination of solutions with a free variable equal to 1 each (one-hot)
+				for(int freeVar = 0; freeVar < freeVariables; ++freeVar)
+				{
+					for(int i = 0; i < firstFreeVariable; ++i)
+					{
+						const int freeTermCol = system_matrix.colNum() - 1;
+						const int freeVarCol = firstFreeVariable + freeVar;
+
+						solution[i] += system_matrix[i][freeTermCol];
+						solution[i] -= system_matrix[i][freeVarCol];
+					}
+				}
+
+				// The solution may have decimals, we want to find a least common multiple for the denominators of those
+				std::vector<T> decimalDenominators = getDenominators(solution);
+
+				long long denominatorLcm = ::chm::math::lcm(decimalDenominators);
+
+				// We multiply the whole solution vector by the lcm to obtain all values as integers
+				for (int i = 0; i < solution.size(); ++i) {
+					solution[i] = std::round(solution[i] * denominatorLcm);
+				}
+
+				return solution;
+			}
+		
+		public:
+
+			std::vector<T> solve(Matrix<T> system_matrix) override
+			{
+				// Add column with de constant term that is meant to be zero
+				system_matrix.pushBackColumn();
+
+				int firstFreeVariable;
+				applyGaussJordan(system_matrix, firstFreeVariable);
+
+				return obtainSolution(system_matrix, firstFreeVariable);
+			}
+		};
+	}
+
+	class Element
+	{
 	public:
 
 		std::string nomenclature;
@@ -59,8 +590,8 @@ namespace chm
 		}
 	};
 
-	Element getPTElement(std::string nomenclature){
-
+	Element getPTElement(std::string nomenclature)
+	{
 		std::vector<Element> elements;
 
 		elements.push_back(Element("H",  {1,-1},      "hydrogen",    1.0079));
@@ -127,7 +658,8 @@ namespace chm
 		return Element("Null",{},"",0);
 	}
 
-	class Reaction_Obj{
+	class Reaction_Obj
+	{
 	public:
 		float mols = 1;
 		Reaction_Obj(){}
@@ -136,95 +668,104 @@ namespace chm
 		virtual std::string nomenclature() = 0;
 	};
 
-	class Compound : public Reaction_Obj{
-
+	class Compound : public Reaction_Obj
+	{
 	public:
 		std::string type;
 		std::vector<Element> elements;
 
 		//std::string type(){ return type; }
 
-		std::string reaction_obj_type() override{
+		std::string reaction_obj_type() override {
 			return "compound";
 		}
 
 		Compound(std::vector<Element> _elements) : elements(_elements){}
 
-		Compound(const Compound& _compound){
-
+		Compound(const Compound& _compound)
+		{
 			this->type = _compound.type;
 			this->elements = _compound.elements;
 		}
 
-		Compound(std::string formulation){
-
+		Compound(std::string formulation)
+		{
 			//  SEPARATING ELEMENTS
 
-			std::string currentElement;
+			std::string currentElement; // buffer for the current element read
 			int parenthesis[2] = {-1,-1};
 			int parenthIndex = 1;
 
-			for(int i = 0; i < formulation.size(); i++){
+			for(int i = 0; i < formulation.size(); i++)
+			{
+				if(formulation[i] == '(') 
+				{
+					parenthesis[0] = elements.size(); //open parenthesis
+				}
 
-				if(formulation[i] == '(') parenthesis[0] = elements.size(); //open parenthesis
-				if(formulation[i] == ')')								  //close parenthesis
+				else if(formulation[i] == ')') //close parenthesis
 				{
 					parenthesis[1] = elements.size() - 1;
-					if(formulation[i+1] > 47 && formulation[i+1] < 58){
-						parenthIndex = (int)(formulation[i+1] - 48);
-						i++;
-						continue;
+
+					if(utils::chr_is_number(formulation[i+1])) {
+						parenthIndex = utils::chr_to_int(formulation[i+1]);
+						i++; // Skip step
 					}
 				}
 
-				if(formulation[i] > 47 && formulation[i] < 58){ //is number
-
-					if(formulation[i+1] > 47 && formulation[i+1] < 58) //if the next char is another number
-						currentElement += formulation[i];
-					else
+				else if(utils::chr_is_number(formulation[i])) // if it is number
+				{
+					currentElement += formulation[i];
+					
+					if(!utils::chr_is_number(formulation[i+1])) // if the next char is not another number
 					{
-						if(elements.size() == 0){ // mols of all compound
-							currentElement += formulation[i];
-							if(currentElement != "") this->mols = std::stoi(currentElement);
-							else this->mols = (int)(formulation[i] - 48);
+						if(elements.size() == 0) // mols of all compound
+						{
+							if(currentElement != "") 
+								this->mols = std::stoi(currentElement);
+							else 
+								this->mols = utils::chr_to_int(formulation[i]);
 						}
-						else{ // mols of current element
-							currentElement += formulation[i];
-							if(currentElement != "") (elements[elements.size()-1]).mols = std::stoi(currentElement);
-							else this->mols = (elements[elements.size()-1]).mols = (int)(formulation[i] - 48);
+						else // mols of current element
+						{
+							Element& lastLoadedElement = (elements[elements.size()-1]);
+
+							if(currentElement != "") 
+								lastLoadedElement.mols = std::stoi(currentElement);
+							else 
+								this->mols = lastLoadedElement.mols = utils::chr_to_int(formulation[i]);
 						}
 						
-						currentElement = "";
-					}
-					continue;
-				}
-
-				if(formulation[i] > 64 && formulation[i] < 91){ //capital letter
-
-					if(formulation[i+1] > 96 && formulation[i+1] < 123){ //lower case letter
-						currentElement += formulation[i];
-						currentElement += formulation[i+1];
-						Element elem = getPTElement(currentElement);
-						currentElement = "";
-						elements.push_back(elem);
-						i++;
-						continue;
-					}
-					else{
-						currentElement += formulation[i];
-						Element elem = getPTElement(currentElement);
-						currentElement = "";
-						elements.push_back(elem);
-						continue;
+						currentElement = ""; // reset buffer
 					}
 				}
 
-				
+				else if(utils::chr_is_uppercase(formulation[i])) // if we find an uppercase letter
+				{
+					if(utils::chr_is_lowercase(formulation[i+1])) { // if the element has 2 letters
+						currentElement += formulation[i];   // First letter
+						currentElement += formulation[i+1]; // Second letter
+
+						Element elem = getPTElement(currentElement);
+						currentElement = "";
+
+						elements.push_back(elem);
+						i++; // Skip step
+					}
+					else {
+						currentElement += formulation[i]; // Get the letter
+
+						Element elem = getPTElement(currentElement);
+						currentElement = "";
+
+						elements.push_back(elem);
+					}
+				}				
 			}
 
-			//apply parenthesis index
-			if(parenthesis[0] != -1 && parenthesis[1] != -1){
-				for(int i = parenthesis[0]; i < parenthesis[1]+1; i++){
+			// apply parenthesis index
+			if(parenthesis[0] != -1 && parenthesis[1] != -1) {
+				for(int i = parenthesis[0]; i < parenthesis[1] + 1; i++){
 					(elements[i]).mols *= parenthIndex;
 				}
 			}
@@ -241,8 +782,8 @@ namespace chm
 			return indexes;
 		}
 
-		void set_valences(){
-
+		void set_valences()
+		{
 			if(elements.size() == 1) //DIATOMIC COMPOUNDS
 			{
 				this->type = "single element";
@@ -720,6 +1261,8 @@ namespace chm
 			for(int i = 0; i < products.size(); i++){
 				std::cout << (products[i])->nomenclature() << ((i < products.size()-1)? " + " : "");
 			}
+			
+			std::cout << "\n";
 		}
 
 		void operator*=(int n){
@@ -808,40 +1351,45 @@ namespace chm
 			//differenciating the present elements
 			std::vector<Element> present_elements;
 
-			for(Reaction_Obj* reactObj : reactants){
-
+			// 1. Obtaining list of all the implicated elements in the reaction
+			for(Reaction_Obj* reactObj : reactants) // TODO: Scan de product side too in search of posible inconsistencies
+			{
 				if(reactObj->reaction_obj_type() == "compound")
 				{
 					Compound current_compound = *(dynamic_cast<Compound*>(reactObj));
 					
-					for(Element el : current_compound.elements){
-						bool f = false;
+					for(Element el : current_compound.elements) 
+					{
+						bool excludeElem = false;
 
-						for(Element pr_el : present_elements)
+						for(Element pr_el : present_elements) {
 							if(el.nomenclature == pr_el.nomenclature 
-							|| (specif_els_to_valance.size() != 0 && (
-									(exclude_specif_els == false && std::find(specif_els_to_valance.begin(), specif_els_to_valance.end(), el.nomenclature) != specif_els_to_valance.end())
-									|| (exclude_specif_els == true && std::find(specif_els_to_valance.begin(), specif_els_to_valance.end(), el.nomenclature) == specif_els_to_valance.end()))))
+								|| (!specif_els_to_valance.empty() && (
+									(exclude_specif_els == false   && std::find(specif_els_to_valance.begin(), specif_els_to_valance.end(), el.nomenclature) != specif_els_to_valance.end())
+									|| (exclude_specif_els == true && std::find(specif_els_to_valance.begin(), specif_els_to_valance.end(), el.nomenclature) == specif_els_to_valance.end())
+									)
+								))
 							{
-								f = true;
+								excludeElem = true;
 								break;
 							}
-						if(f == false) present_elements.push_back(el);
+						}
+
+						if(excludeElem == false) 
+							present_elements.push_back(el);
 					}
 				}
-				
 			}
 
-			// getting all equations (Ej: a + 2b = 0)
-
+			// 2. Creating the matrix that represents the ecuation system
+			// Ex: xCl + yNa -> zNaCl is translated to an ecuation x + y -z = 0 for each row
 			float** first_matrix = new float*[ present_elements.size() ];// the number of ecuations corresponds to de number of the unrepited different elements
 			for(int i = 0; i < present_elements.size(); i++)
 				first_matrix[i] = new float[ reactants.size() + products.size() ]; //a b c ... coefficents depend on de number of compounds in the reaction
 
-			for(int i = 0; i < present_elements.size(); i++){
-
-
-				for(int j = 0; j < reactants.size(); j++){
+			for(int i = 0; i < present_elements.size(); i++)
+			{
+				for(int j = 0; j < reactants.size(); j++) {
 
 					int current_compound_mols = (reactants[j])->mols;
 					int element_mols_count = 0;
@@ -861,6 +1409,7 @@ namespace chm
 
 					first_matrix[i][j] = element_mols_count * current_compound_mols;
 				}
+
 				for(int j = 0; j < products.size(); j++){
 
 					int current_compound_mols = (products[j])->mols;
@@ -879,11 +1428,12 @@ namespace chm
 						
 					}
 
-					first_matrix[i][j + reactants.size()] = element_mols_count * current_compound_mols;
+					first_matrix[i][reactants.size() + j] = element_mols_count * current_compound_mols;
 				}
 			}
+
 			//-------------------------------------------------------------------------------------------------------------------------
-			//Elimitating repeated equivalent equations
+			// 3. Elimitating repeated equivalent equations
 			//-------------------------------------------------------------------------------------------------------------------------
 			std::vector<float> row_factor;
 			for(int i = 0; i < present_elements.size(); i++){
@@ -927,7 +1477,7 @@ namespace chm
 
 			float** matrix = new float*[ num_of_equations ];
 			for(int i = 0; i < num_of_equations; i++)
-				matrix[i] = new float[ num_of_coeficents+1 ];
+				matrix[i] = new float[ num_of_coeficents + 1 ];
 
 			
 int skip = 0;//RETOCAR
@@ -940,29 +1490,6 @@ int skip = 0;//RETOCAR
 			}
 			num_of_coeficents--;
 
-
-		/*	//First ensure that all the diagonal values are != 0
-			for(int i = 0; i < num_of_equations; i++){
-
-				if(matrix[i][i] != 0) continue;
-
-				//if the diagonal coeficent is 0
-				// search for a matrix row to swap
-				for(int j = i+1; j < num_of_equations; j++){
-
-					if(matrix[j][i] == 0) continue;
-
-					//if a row was found
-					//swaping the rows
-					for(int k = 0; k < num_of_coeficents+1; k++){
-
-						float aux = matrix[j][k];
-						matrix[j][k] = matrix[i][k];
-						matrix[i][k] = aux;
-					}
-					break;
-				}
-			}*/
 			ensure:
 			auto SHOW_MATRIX_STATE = [&](){
 				for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
@@ -982,13 +1509,13 @@ int skip = 0;//RETOCAR
 
 				//if the diagonal coeficent is 0
 				// search for a matrix row to swap
-				for(int j = i+1; j < num_of_equations; j++){
+				for(int j = i + 1; j < num_of_equations; j++){
 
 					if(matrix[j][i] == 0) continue;
 
 					//if a row was found
 					//swaping the rows
-					for(int k = 0; k < num_of_coeficents+1; k++){
+					for(int k = 0; k < num_of_coeficents + 1; k++){
 
 						float aux = matrix[j][k];
 						matrix[j][k] = matrix[i][k];
@@ -1001,44 +1528,40 @@ int skip = 0;//RETOCAR
 				
 
 			}
+
+			// 4. Ensure that the diagonals have found a good ordering in diagonal terms, otherwise repeat
 			bool allOk = true;
 			int err_index;
-			for(int i = 0; i < num_of_equations; i++){
-				if(matrix[i][i] == 0){
+
+			for(int i = 0; i < num_of_equations; i++) {
+				if(matrix[i][i] == 0) {
 					allOk = false;
 					err_index = i;
 					break;
 				}
 			}
-			if(allOk == false){
 
-				for(int i = 0; i < num_of_equations; i++){
+			if(allOk == false) {
+
+				for(int i = 0; i < num_of_equations; i++) {
 
 					if(matrix[i][err_index] == 0) continue;
-					if(matrix[err_index][i] == 0) continue;printf("eeeyyy");
+					if(matrix[err_index][i] == 0) continue;
 
-					for(int k = 0; k < num_of_coeficents+1; k++){
-std::cout << "err_index = " << err_index << std::endl;
-						float aux = matrix[i][k];std::cout << "aux = " << aux << std::endl;
-						matrix[i][k] = matrix[err_index][k];std::cout << "matrix[i][k] = " << matrix[i][k] << std::endl;
-						matrix[err_index][k] = aux;std::cout << "matrix[err_index][k] = " << matrix[err_index][k] << std::endl;
-					}std::cout << "\n";
+					for(int k = 0; k < num_of_coeficents+1; k++) {
+						float aux = matrix[i][k];
+						matrix[i][k] = matrix[err_index][k];
+						matrix[err_index][k] = aux;
+					}
 					break;
 				}
 				
 				goto ensure;
 			}
-			
 
-			
+			// 5. convert the coeficients under the diagonal into 0
 			gauss_jordan_elimination:
 
-		/*	for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
-				for(int j = 0; j < num_of_coeficents+1; j++){
-					std::cout << ((j == num_of_coeficents)? "| " : "") << matrix[i][j] << "  ";
-				}
-				std::cout << "\n\n";
-			}std::cout << "\n----------------------\n";*/
 			SHOW_MATRIX_STATE();
 
 			//convert the coeficients under the diagonal into 0
@@ -1050,20 +1573,21 @@ std::cout << "err_index = " << err_index << std::endl;
 						int best_scalonated_num_of_coef = num_of_coeficents;
 						int best_scalonated_row = 0;
 
-						for(int k = 0; k < num_of_equations; k++){//searching for row to operate
-
+						// searching for row to operate
+						for(int k = 0; k < num_of_equations; k++) 
+						{
 							if(k != j && matrix[k][i] != 0){ //posible found row
 
 								int aprox_index = 0;
-								for(int s = 0; s < num_of_coeficents; s++){
+								for(int s = 0; s < num_of_coeficents; s++){ // search first non cero column of the row
 									if(matrix[k][s] != 0) break;
 									aprox_index++;
 								}
 
 								//setting the best row to operate
-								if(best_scalonated_num_of_coef > num_of_coeficents-aprox_index){
+								if(best_scalonated_num_of_coef > num_of_coeficents - aprox_index){
 									best_scalonated_row = k;
-									best_scalonated_num_of_coef = num_of_coeficents-aprox_index;
+									best_scalonated_num_of_coef = num_of_coeficents - aprox_index;
 								}
 
 							}
@@ -1071,7 +1595,7 @@ std::cout << "err_index = " << err_index << std::endl;
 
 						//start elimination operation
 						float oposite_coef = -matrix[j][i];
-						for(int n = 0; n < (num_of_coeficents+1); n++){
+						for(int n = 0; n < (num_of_coeficents + 1); n++){
 							matrix[j][n] = matrix[j][n] * matrix[best_scalonated_row][i] + matrix[best_scalonated_row][n] * oposite_coef; //reducing
 						}
 						std::cin.get();
@@ -1080,7 +1604,7 @@ std::cout << "err_index = " << err_index << std::endl;
 				}
 			}
 
-			//convert the coeficients on top of the diagonal into 0
+			// 6. convert the coeficients on top of the diagonal into 0
 			for(int i = 0; i < num_of_coeficents; i++){
 				for(int j = 0; j < num_of_equations; j++){
 
@@ -1119,7 +1643,7 @@ std::cout << "err_index = " << err_index << std::endl;
 				}
 			}
 
-			//setting coeficents to 1
+			// 7. setting coeficents to 1
 			for(int i = 0; i < num_of_equations; i++){
 
 				float index_factor = matrix[i][i];
@@ -1128,13 +1652,7 @@ std::cout << "err_index = " << err_index << std::endl;
 				
 			}
 
-			for(int i = 0; i < num_of_equations; i++){ // SHOW MATRIX STATE
-				for(int j = 0; j <num_of_coeficents+1; j++){
-					std::cout << ((j == num_of_coeficents)? "| " : "") << matrix[i][j] << "  ";
-				}
-				std::cout << "\n\n";
-			}std::cout << "\n----------------------\n";
-
+			SHOW_MATRIX_STATE();
 
 			int lower_mol_value = 1;
 
@@ -1143,7 +1661,7 @@ std::cout << "err_index = " << err_index << std::endl;
 			(reactants[0])->mols = lower_mol_value;
 
 			int coeff_index = 0;
-			for(int i = 0; i < reactants.size(); i++){
+			for(int i = 0; i < reactants.size(); i++) {
 
 				if(i == 0) continue; // is a setted value
 				
@@ -1159,7 +1677,8 @@ std::cout << "err_index = " << err_index << std::endl;
 
 				coeff_index++;
 			}
-			for(Reaction_Obj* product: products){
+
+			for(Reaction_Obj* product: products) {
 
 				float setted_product_mols = product->mols * matrix[coeff_index][num_of_coeficents] * lower_mol_value;
 
@@ -1224,3 +1743,9 @@ std::cout << "err_index = " << err_index << std::endl;
 	}
 	
 }
+
+/*
+	iterar hacia abajo y si no se encuentra una buena fila debajo se swapea buscando desde arriba un buen 
+	candidato para esa posición y se continúa la iteración, al acabar se repite la iteración
+ */
+
