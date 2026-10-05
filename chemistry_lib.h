@@ -2,6 +2,7 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <sstream>
 #include <initializer_list>
 #include <stdexcept>
 #include <math.h>
@@ -44,6 +45,21 @@ namespace chm
 
 			return found;
 		}
+
+		template<class T>
+		void print_vector(std::vector<T> vec)
+		{
+			std::cout << "{";
+			
+			for(int i = 0; i < vec.size(); ++i) {
+				std::cout << vec[i];
+
+				if(i < vec.size() - 1)
+					std::cout << ", ";
+			}
+
+			std::cout << "}";
+		}
 	}
 
 	namespace math
@@ -85,7 +101,8 @@ namespace chm
 			}
 		}
 
-		long long lcm(const std::vector<int>& values) 
+		template<class T>
+		long long lcm(const std::vector<T>& values) 
 		{
 			// We use long long for computational precission safety
 			long long globalLCM = 1;
@@ -122,7 +139,7 @@ namespace chm
 			{
 			}
 
-			int dimensions()
+			int dimensions() const
 			{
 				return _elements.size();
 			}
@@ -204,7 +221,15 @@ namespace chm
 
 			Vector<T> operator-(const Vector<T>& other)
 			{
-				return (*this + (-other));
+				if(dimensions() != other.dimensions())
+					throw std::runtime_error("Vector<T> error: Vectors must have the same dimensions");
+
+				Vector<T> vec(dimensions());
+
+				for(int i = 0; i < _elements.size(); ++i)
+					vec[i] = _elements[i] - other._elements[i];
+
+				return vec;
 			}
 
 			// Forwarding the internal vector interator to work with for-each loops
@@ -262,7 +287,7 @@ namespace chm
 				return {_rowNum, _columnNum};
 			}
 
-			T& operator[](std::size_t idx)
+			std::vector<T>& operator[](std::size_t idx)
 			{
 				return _matrix[idx]; 
 			}
@@ -363,7 +388,7 @@ namespace chm
 				if(r1 == r2)
 					return;
 
-				_matrix[r1].swap(r2);
+				_matrix[r1].swap(_matrix[r2]);
 			}
 
 			void swapCols(int c1, int c2)
@@ -377,6 +402,35 @@ namespace chm
 				for(std::vector<T>& row : _matrix)
 					std::swap(row[c1], row[c2]);
 			}
+
+			std::string toString() const
+			{
+				std::string str;
+				std::stringstream stringOut;
+
+				for(const std::vector<T>& row : _matrix)
+				{
+					stringOut << "[ ";
+
+					for(int i = 0; i < row.size(); ++i)
+					{
+						stringOut << row[i];
+
+						if(i < row.size() - 1)
+							stringOut << ", ";
+					}
+
+					stringOut << " ]\n";
+				}
+
+				std::string word;
+				while (std::getline(stringOut, word)) {
+					str += word;             
+					str += "\n";             
+				}
+
+				return str;
+			}
 		};
 
 		template<class T>
@@ -384,7 +438,7 @@ namespace chm
 		{
 		public:
 			virtual ~EquationSystemSolver(){}
-			std::vector<T> solve(Matrix<T> system_matrix) = 0;
+			virtual std::vector<T> solve(Matrix<T> system_matrix) = 0;
 		};
 
 		template<class T>
@@ -407,10 +461,13 @@ namespace chm
 				
 				while(row < system_matrix.rowNum() && !rowOfZerosFound)
 				{
+					std::cout << system_matrix.toString() << "\n";
+					std::cin.get();
+
 					// Look for the maximum value in the lower part of the column
 					Vector<T> column = system_matrix.col(row);
-					int betterPivotColValue = column[row];
-					int betterPivotRow = row;
+					T betterPivotColValue = column[row];
+					T betterPivotRow = row;
 					
 					for(int r = row + 1; r < column.dimensions(); ++r)
 					{
@@ -420,8 +477,10 @@ namespace chm
 						}
 					}
 
+					std::cout << "Row: " << row << "  Pivot: " << betterPivotColValue << "\n\n";
+
 					// Check if we have a consistent dependent system if we only find zeros in the rest of the column
-					if(betterPivotColValue < 1e-5f)
+					if(abs(betterPivotColValue) < 1e-5f)
 					{
 						rowOfZerosFound = true;
 						firstFreeVariable = row; // The index of the first free variable of the consistent dependet system
@@ -431,9 +490,15 @@ namespace chm
 						// Swap row with better candidate if there is one
 						system_matrix.swapRows(row, betterPivotRow);
 
+						std::cout << system_matrix.toString() << "\n";
+					std::cin.get();
+
 						// Normalize de row turning the diagonal column to 1
 						Vector<T> normalizedRow = system_matrix.row(row) / betterPivotColValue;
 						system_matrix.setRow(row, normalizedRow);
+
+						std::cout << system_matrix.toString() << "\n";
+					std::cin.get();
 
 						// Clean the column in the rest of rows making zero their value
 						for(int r = 0; r < system_matrix.rowNum(); ++r)
@@ -444,6 +509,11 @@ namespace chm
 
 								T factor = system_matrix[r][currentCol];
 								Vector<T> cleanedRow = system_matrix.row(r) - system_matrix.row(row) * factor;
+
+								system_matrix.setRow(r, cleanedRow);
+
+								std::cout << system_matrix.toString() << "\n";
+					std::cin.get();
 							}
 						}
 					
@@ -497,16 +567,20 @@ namespace chm
 				// Fill the solution vector as a combination of solutions with a free variable equal to 1 each (one-hot)
 				for(int freeVar = 0; freeVar < freeVariables; ++freeVar)
 				{
+					const int freeTermCol = system_matrix.colNum() - 1;
+					const int freeVarCol = firstFreeVariable + freeVar;
+					
+					solution[freeVarCol] = 1;
+
 					for(int i = 0; i < firstFreeVariable; ++i)
 					{
-						const int freeTermCol = system_matrix.colNum() - 1;
-						const int freeVarCol = firstFreeVariable + freeVar;
 
 						solution[i] += system_matrix[i][freeTermCol];
 						solution[i] -= system_matrix[i][freeVarCol];
 					}
 				}
-
+				std::cout << "Solucion sin arreglar\n";
+utils::print_vector(solution);
 				// The solution may have decimals, we want to find a least common multiple for the denominators of those
 				std::vector<T> decimalDenominators = getDenominators(solution);
 
@@ -529,8 +603,10 @@ namespace chm
 
 				int firstFreeVariable;
 				applyGaussJordan(system_matrix, firstFreeVariable);
-
-				return obtainSolution(system_matrix, firstFreeVariable);
+				
+				std::vector<T> sol = obtainSolution(system_matrix, firstFreeVariable);
+				
+				return sol;
 			}
 		};
 	}
@@ -1383,9 +1459,7 @@ namespace chm
 
 			// 2. Creating the matrix that represents the ecuation system
 			// Ex: xCl + yNa -> zNaCl is translated to an ecuation x + y -z = 0 for each row
-			float** first_matrix = new float*[ present_elements.size() ];// the number of ecuations corresponds to de number of the unrepited different elements
-			for(int i = 0; i < present_elements.size(); i++)
-				first_matrix[i] = new float[ reactants.size() + products.size() ]; //a b c ... coefficents depend on de number of compounds in the reaction
+			math::Matrix<float> system_matrix(present_elements.size(), reactants.size() + products.size());
 
 			for(int i = 0; i < present_elements.size(); i++)
 			{
@@ -1407,7 +1481,7 @@ namespace chm
 						
 					}
 
-					first_matrix[i][j] = element_mols_count * current_compound_mols;
+					system_matrix[i][j] = element_mols_count;// * current_compound_mols;
 				}
 
 				for(int j = 0; j < products.size(); j++){
@@ -1428,266 +1502,27 @@ namespace chm
 						
 					}
 
-					first_matrix[i][reactants.size() + j] = element_mols_count * current_compound_mols;
+					system_matrix[i][reactants.size() + j] = element_mols_count;// * current_compound_mols;
 				}
 			}
 
-			//-------------------------------------------------------------------------------------------------------------------------
-			// 3. Elimitating repeated equivalent equations
-			//-------------------------------------------------------------------------------------------------------------------------
-			std::vector<float> row_factor;
-			for(int i = 0; i < present_elements.size(); i++){
-				for(int j = 0; j < reactants.size() + products.size(); j++){
-	
-					if(first_matrix[i][j] != 0){ row_factor.push_back(first_matrix[i][j]); break;} 
-					if(j == reactants.size() + products.size() -1) row_factor.push_back(0);
-				}
-			}
+			math::GaussJordan_EqSystemSolver<float> eq_solver;
+			std::cout << system_matrix.toString() << "\n";
 
-			std::vector<int> excluded;
+			std::vector<float> valancedCoeficients = eq_solver.solve(system_matrix);
+			utils::print_vector(valancedCoeficients);
 
-			for(int i = 0; i < present_elements.size(); i++){
-
-				if(std::find(excluded.begin(), excluded.end(), i) != excluded.end()) continue; //is this row already excluded?
-
-				for(int j = 0; j < present_elements.size(); j++){
-
-					if(std::find(excluded.begin(), excluded.end(), j) != excluded.end() || j == i) continue; //is this row already excluded or the same compared to?
-
-					bool differ = false;
-					for(int k = 0; k < (reactants.size() + products.size()); k++){
-						if(first_matrix[i][k] * row_factor[j] != first_matrix[j][k] * row_factor[i]){
-							differ = true;
-							break;
-						}
-					}
-					if(differ == false){ 
-						excluded.push_back(j); 
-						break;
-					}
-				}
-			}
-			//-------------------------------------------------------------------------------------------------------------------------
-			//-------------------------------------------------------------------------------------------------------------------------
-
-			//assuming coefficent 'a' is 1 we reduce the number of coefficents and set an independent term column
-			//we create a second matrix for solving the rest of unknowns
-			int num_of_coeficents = products.size() + reactants.size();
-			int num_of_equations = present_elements.size() /**/-excluded.size();
-
-			float** matrix = new float*[ num_of_equations ];
-			for(int i = 0; i < num_of_equations; i++)
-				matrix[i] = new float[ num_of_coeficents + 1 ];
-
-			
-int skip = 0;//RETOCAR
-			for(int i = 0; i < num_of_equations; i++){
-				for(int j = 0; j < num_of_coeficents-1; j++){
-					/**/if(std::find(excluded.begin(), excluded.end(), i) != excluded.end()) skip++;
-					matrix[i][j] = first_matrix[i/**/+skip/**/][j+1];
-				}
-				matrix[i][num_of_coeficents-1] = -first_matrix[i][0];
-			}
-			num_of_coeficents--;
-
-			ensure:
-			auto SHOW_MATRIX_STATE = [&](){
-				for(int i = 0; i < num_of_equations; i++){  // SHOW MATRIX STATE
-					for(int j = 0; j < num_of_coeficents+1; j++){
-						std::cout << ((j == num_of_coeficents)? "| " : "") << matrix[i][j] << "  ";
-					}
-					std::cout << "\n\n";
-				}std::cout << "\n----------------------\n";
-			};
-			
-			SHOW_MATRIX_STATE();
-
-			//First ensure that all the diagonal values are != 0
-			for(int i = 0; i < num_of_equations; i++){
-
-				if(matrix[i][i] != 0) continue;
-
-				//if the diagonal coeficent is 0
-				// search for a matrix row to swap
-				for(int j = i + 1; j < num_of_equations; j++){
-
-					if(matrix[j][i] == 0) continue;
-
-					//if a row was found
-					//swaping the rows
-					for(int k = 0; k < num_of_coeficents + 1; k++){
-
-						float aux = matrix[j][k];
-						matrix[j][k] = matrix[i][k];
-						matrix[i][k] = aux;
-					}
-					std::cout << "\nCHANGED\n";
-					SHOW_MATRIX_STATE();
-					break;
-				}
-				
-
-			}
-
-			// 4. Ensure that the diagonals have found a good ordering in diagonal terms, otherwise repeat
-			bool allOk = true;
-			int err_index;
-
-			for(int i = 0; i < num_of_equations; i++) {
-				if(matrix[i][i] == 0) {
-					allOk = false;
-					err_index = i;
-					break;
-				}
-			}
-
-			if(allOk == false) {
-
-				for(int i = 0; i < num_of_equations; i++) {
-
-					if(matrix[i][err_index] == 0) continue;
-					if(matrix[err_index][i] == 0) continue;
-
-					for(int k = 0; k < num_of_coeficents+1; k++) {
-						float aux = matrix[i][k];
-						matrix[i][k] = matrix[err_index][k];
-						matrix[err_index][k] = aux;
-					}
-					break;
-				}
-				
-				goto ensure;
-			}
-
-			// 5. convert the coeficients under the diagonal into 0
-			gauss_jordan_elimination:
-
-			SHOW_MATRIX_STATE();
-
-			//convert the coeficients under the diagonal into 0
-			for(int i = 0; i < num_of_coeficents; i++){
-				for(int j = i; j < num_of_equations; j++){
-
-					if(j > i && matrix[j][i] != 0){
-
-						int best_scalonated_num_of_coef = num_of_coeficents;
-						int best_scalonated_row = 0;
-
-						// searching for row to operate
-						for(int k = 0; k < num_of_equations; k++) 
-						{
-							if(k != j && matrix[k][i] != 0){ //posible found row
-
-								int aprox_index = 0;
-								for(int s = 0; s < num_of_coeficents; s++){ // search first non cero column of the row
-									if(matrix[k][s] != 0) break;
-									aprox_index++;
-								}
-
-								//setting the best row to operate
-								if(best_scalonated_num_of_coef > num_of_coeficents - aprox_index){
-									best_scalonated_row = k;
-									best_scalonated_num_of_coef = num_of_coeficents - aprox_index;
-								}
-
-							}
-						}
-
-						//start elimination operation
-						float oposite_coef = -matrix[j][i];
-						for(int n = 0; n < (num_of_coeficents + 1); n++){
-							matrix[j][n] = matrix[j][n] * matrix[best_scalonated_row][i] + matrix[best_scalonated_row][n] * oposite_coef; //reducing
-						}
-						std::cin.get();
-						goto gauss_jordan_elimination;
-					}
-				}
-			}
-
-			// 6. convert the coeficients on top of the diagonal into 0
-			for(int i = 0; i < num_of_coeficents; i++){
-				for(int j = 0; j < num_of_equations; j++){
-
-					if(j < i && matrix[j][i] != 0){
-
-						int best_scalonated_num_of_coef = num_of_coeficents;
-						int best_scalonated_row = 0;
-
-						for(int k = 0; k < num_of_equations; k++){//searching for row to operate
-
-							if(k != j && matrix[k][i] != 0){ //posible found row
-
-								int aprox_index = 0;
-								for(int s = 0; s < num_of_coeficents; s++){
-									if(matrix[k][s] != 0) break;
-									aprox_index++;
-								}
-
-								//setting the best row to operate
-								if(best_scalonated_num_of_coef > num_of_coeficents-aprox_index){
-									best_scalonated_row = k;
-									best_scalonated_num_of_coef = num_of_coeficents-aprox_index;
-								}
-
-							}
-						}
-
-						//start elimination operation
-						float oposite_coef = -matrix[j][i];
-						for(int n = 0; n < (num_of_coeficents+1); n++){
-							matrix[j][n] = matrix[j][n] * matrix[best_scalonated_row][i] + matrix[best_scalonated_row][n] * oposite_coef; //reducing
-						}
-						std::cin.get();
-						goto gauss_jordan_elimination;
-					}
-				}
-			}
-
-			// 7. setting coeficents to 1
-			for(int i = 0; i < num_of_equations; i++){
-
-				float index_factor = matrix[i][i];
-				for(int j = 0; j < num_of_coeficents+1; j++)
-					matrix[i][j] = matrix[i][j] / index_factor;
-				
-			}
-
-			SHOW_MATRIX_STATE();
-
-			int lower_mol_value = 1;
-
-			setting_mols: std::cout << lower_mol_value << "\n";
-
-			(reactants[0])->mols = lower_mol_value;
-
+			// Building solution
 			int coeff_index = 0;
-			for(int i = 0; i < reactants.size(); i++) {
 
-				if(i == 0) continue; // is a setted value
-				
-				Reaction_Obj* reactant = reactants[i];
-				float setted_reactant_mols = reactant->mols * matrix[coeff_index][num_of_coeficents] * lower_mol_value;
-				
-				if(setted_reactant_mols - (int)(setted_reactant_mols) != 0){//if mols are not integers repeat mol setting
-					lower_mol_value++;
-					goto setting_mols;
-				}
-		
-				reactant->mols *= setted_reactant_mols;
+			for(Reaction_Obj* reactant : reactants) {
+				reactant->mols = valancedCoeficients[coeff_index];
 
 				coeff_index++;
 			}
 
 			for(Reaction_Obj* product: products) {
-
-				float setted_product_mols = product->mols * matrix[coeff_index][num_of_coeficents] * lower_mol_value;
-
-				if(setted_product_mols - (int)(setted_product_mols) != 0){//if mols are not integers repeat mol setting
-					lower_mol_value++;
-					goto setting_mols;
-				}
-
-				product->mols *= setted_product_mols;
+				product->mols = valancedCoeficients[coeff_index];
 
 				coeff_index++;
 			}
